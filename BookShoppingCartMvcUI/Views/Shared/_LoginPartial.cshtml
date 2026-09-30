@@ -1,0 +1,43 @@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+
+<ul class="navbar-nav align-items-lg-center">
+@if (SignInManager.IsSignedIn(User))
+{
+    var onWishlist = ViewContext.RouteData.Values["controller"] as string == "Wishlist";
+    <li class="nav-item">
+        <a class="nav-link @(onWishlist ? "active" : "")" aria-current="@(onWishlist ? "page" : null)" asp-area="" asp-controller="Wishlist" asp-action="Index">
+            <i class="bi bi-heart" aria-hidden="true"></i> Wishlist
+        </a>
+    </li>
+    <li class="nav-item dropdown">
+        @* href is for no-js, with js it opens the menu *@
+        <a class="nav-link dropdown-toggle" asp-area="" asp-controller="Account" asp-action="Index" role="button" data-bs-toggle="dropdown" aria-expanded="false">Hello <span id="username">@User.Identity?.Name</span>@if (User.IsInRole(Roles.Admin.ToString()))
+            {
+                <small class="ms-1 opacity-75">(Admin)</small>
+            }
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Index"><i class="bi bi-person" aria-hidden="true"></i> My account</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-controller="UserOrder" asp-action="UserOrders"><i class="bi bi-box-seam" aria-hidden="true"></i> My orders</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Reviews"><i class="bi bi-star" aria-hidden="true"></i> My reviews</a></li>
+            <li><a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index"><i class="bi bi-gear" aria-hidden="true"></i> Profile settings</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                    <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log out</button>
+                </form>
+            </li>
+        </ul>
+    </li>
+}
+else
+{
+    <li class="nav-item">
+        <a class="nav-link" asp-area="Identity" asp-page="/Account/Login">Log in</a>
+    </li>
+    <li class="nav-item">
+        <a class="btn btn-light btn-sm text-primary ms-lg-2 my-2 my-lg-0" asp-area="Identity" asp-page="/Account/Register">Register</a>
+    </li>
+}
+</ul>

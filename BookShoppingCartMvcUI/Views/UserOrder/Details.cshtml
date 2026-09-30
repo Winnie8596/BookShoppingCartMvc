@@ -1,0 +1,108 @@
+@model OrderDetailsModel
+@using System.Globalization
+@{
+    ViewData["Title"] = $"Order #{Model.Id}";
+    ViewData["AccountSection"] = "Orders";
+    Layout = "_AccountLayout";
+    int trackStep = Array.IndexOf(OrderStatusStyle.Track, Model.StatusName);
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="UserOrders">My orders</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Order #@Model.Id</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+    <h1 class="h3 mb-0">Order #@Model.Id</h1>
+    <span class="badge fs-6 @OrderStatusStyle.BadgeClass(Model.StatusName)" id="order-status">@Model.StatusName</span>
+</div>
+<p class="text-muted mb-3">
+    Placed on @Model.CreateDate.ToString("d MMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture).
+    @OrderStatusStyle.Explain(Model.StatusName)
+</p>
+
+@* simple progress bar for normal orders, cancelled/returned just show the badge *@
+@if (trackStep >= 0)
+{
+    <ol class="order-track list-unstyled d-flex mb-4" aria-label="Order progress">
+        @for (int i = 0; i < OrderStatusStyle.Track.Length; i++)
+        {
+            var state = i < trackStep ? "done" : i == trackStep ? "current" : "todo";
+            <li class="order-track-step flex-fill text-center small @state" aria-current="@(state == "current" ? "step" : null)">
+                <span class="order-track-dot" aria-hidden="true"></span>
+                <span class="d-block mt-1">@OrderStatusStyle.Track[i]</span>
+            </li>
+        }
+    </ol>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6">
+        <section class="card h-100" aria-labelledby="deliveryHeading">
+            <div class="card-body">
+                <h2 id="deliveryHeading" class="h6 text-uppercase text-muted">Delivery</h2>
+                <p class="mb-2">@Model.Name<br /><span style="white-space:pre-line">@Model.Address</span></p>
+                <p class="small text-muted mb-0">@Model.Email<br />@Model.MobileNumber</p>
+            </div>
+        </section>
+    </div>
+    <div class="col-sm-6">
+        <section class="card h-100" aria-labelledby="paymentHeading">
+            <div class="card-body">
+                <h2 id="paymentHeading" class="h6 text-uppercase text-muted">Payment</h2>
+                <p class="mb-1">@(Model.PaymentMethod == nameof(PaymentMethods.COD) ? "Cash on delivery" : Model.PaymentMethod == nameof(PaymentMethods.Online) ? "Online payment" : Model.PaymentMethod)</p>
+                @if (Model.IsPaid)
+                {
+                    <span class="badge text-bg-success" id="payment-status">Paid</span>
+                }
+                else
+                {
+                    <span class="badge text-bg-light border" id="payment-status">Not paid yet</span>
+                }
+            </div>
+        </section>
+    </div>
+</div>
+
+<h2 class="h5">Items</h2>
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Book</th>
+                <th scope="col" class="d-none d-sm-table-cell">Unit price</th>
+                <th scope="col" class="text-center">Qty</th>
+                <th scope="col" class="text-end">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in Model.Lines)
+            {
+                <tr class="order-line">
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="/images/@(string.IsNullOrEmpty(line.Image) ? "NoImage.png" : line.Image)" class="order-line-cover d-none d-sm-block"
+                                 alt="" width="48" height="72" loading="lazy" />
+                            <div>
+                                <a asp-controller="Home" asp-action="Details" asp-route-id="@line.BookId">@line.BookName</a>
+                                <small class="text-muted d-block">@line.AuthorName</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="line-price d-none d-sm-table-cell">@Money.Format(line.UnitPrice)</td>
+                    <td class="line-quantity text-center">@line.Quantity</td>
+                    <td class="line-subtotal text-end">@Money.Format(line.Subtotal)</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th scope="row" colspan="3" class="text-end">Order total</th>
+                <th class="text-end" id="order-total">@Money.Format(Model.Total)</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+<p class="small text-muted">Prices are what you paid when you ordered.</p>

@@ -1,0 +1,18 @@
+@model BookDTO
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Edit book";
+}
+<div class="col-12 col-lg-8 col-xl-6">
+    <a asp-action="Index" class="small"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to books</a>
+    <h1 class="h3 my-2">Edit book</h1>
+    <form asp-action="UpdateBook" enctype="multipart/form-data" method="post">
+        @* image comes from the db on save, only the id is posted *@
+        <input type="hidden" asp-for="Id" />
+        <partial name="_BookForm" model="Model" />
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button type="submit" class="btn btn-primary">Save changes</button>
+            <a asp-controller="Stock" asp-action="ManangeStock" asp-route-bookId="@Model.Id" class="btn btn-outline-secondary">Update stock</a>
+        </div>
+    </form>
+</div>

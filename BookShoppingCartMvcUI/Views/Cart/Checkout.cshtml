@@ -1,0 +1,134 @@
+@model CheckoutModel
+@{
+    ViewData["Title"] = "Checkout";
+    var cart = ViewData["Cart"] as CartViewModel;
+    bool hasErrors = !ViewData.ModelState.IsValid;
+    bool paymentInvalid = ViewData.ModelState[nameof(CheckoutModel.PaymentMethod)]?.Errors.Count > 0;
+    var paymentOptions = new (PaymentMethods Method, string Label, string Hint)[]
+    {
+        (PaymentMethods.COD, "Cash on delivery", "Pay the courier when your books arrive."),
+        (PaymentMethods.Online, "Online payment", "We'll send payment instructions after you order."),
+    };
+}
+
+<nav aria-label="Checkout progress" class="mb-3">
+    <ol class="checkout-steps list-unstyled d-flex gap-3 small mb-0">
+        <li><a asp-action="GetUserCart"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Cart</a></li>
+        <li class="fw-bold" aria-current="step"><i class="bi bi-2-circle-fill" aria-hidden="true"></i> Details</li>
+        <li class="text-muted"><i class="bi bi-3-circle" aria-hidden="true"></i> Confirmation</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-3">Checkout</h1>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        @if (hasErrors)
+        {
+            <div class="alert alert-danger" role="alert" id="checkout-errors" tabindex="-1">
+                <p class="fw-semibold mb-0">Some details need fixing before we can place your order. They're marked in red below.</p>
+                <div asp-validation-summary="ModelOnly" class="mb-0"></div>
+            </div>
+        }
+
+        <form asp-action="Checkout" method="post" id="checkoutForm" novalidate>
+            <fieldset class="mb-3">
+                <legend class="h5">Contact details</legend>
+                <div class="mb-3">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" autocomplete="name" maxlength="30" />
+                    <span asp-validation-for="Name" class="invalid-feedback d-block"></span>
+                </div>
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label asp-for="Email" class="form-label"></label>
+                        <input asp-for="Email" type="email" class="form-control" autocomplete="email" maxlength="30" />
+                        <span asp-validation-for="Email" class="invalid-feedback d-block"></span>
+                    </div>
+                    <div class="col-sm-6">
+                        <label asp-for="MobileNumber" class="form-label"></label>
+                        <input asp-for="MobileNumber" type="tel" class="form-control" autocomplete="tel" inputmode="tel" maxlength="20" aria-describedby="mobileHint" />
+                        <div id="mobileHint" class="form-text">The courier uses this to arrange delivery.</div>
+                        <span asp-validation-for="MobileNumber" class="invalid-feedback d-block"></span>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="mb-3">
+                <legend class="h5">Delivery</legend>
+                <label asp-for="Address" class="form-label"></label>
+                <textarea asp-for="Address" class="form-control" rows="3" autocomplete="street-address" maxlength="200"></textarea>
+                <span asp-validation-for="Address" class="invalid-feedback d-block"></span>
+            </fieldset>
+
+            <fieldset class="mb-4">
+                <legend class="h5">Payment method</legend>
+                @* radios done by hand so the aria-invalid tag helper doesn't cover them *@
+                @foreach (var option in paymentOptions)
+                {
+                    var id = $"pay{option.Method}";
+                    <div class="form-check payment-option border rounded p-3 ps-5 mb-2">
+                        <input class="form-check-input" type="radio" name="PaymentMethod" id="@id" value="@option.Method"
+                               checked="@(Model?.PaymentMethod == option.Method.ToString())"
+                               aria-invalid="@(paymentInvalid ? "true" : null)"
+                               aria-describedby="@(paymentInvalid ? "PaymentMethod-error " : "")@(id)Hint" />
+                        <label class="form-check-label fw-semibold" for="@id">@option.Label</label>
+                        <div id="@(id)Hint" class="form-text mt-0">@option.Hint</div>
+                    </div>
+                }
+                <span asp-validation-for="PaymentMethod" class="invalid-feedback d-block"></span>
+            </fieldset>
+
+            <div class="d-flex flex-column-reverse flex-sm-row justify-content-between gap-2">
+                <a class="btn btn-link px-0" asp-action="GetUserCart"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to cart</a>
+                <button type="submit" class="btn btn-primary btn-lg">
+                    Place order@(cart is null ? "" : $" · {Money.Format(cart.Total)}")
+                </button>
+            </div>
+        </form>
+    </div>
+
+    @if (cart is not null)
+    {
+        <div class="col-lg-5">
+            <section class="card order-summary" aria-labelledby="summaryHeading">
+                <div class="card-body">
+                    <h2 id="summaryHeading" class="h5">Your order</h2>
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var line in cart.Lines)
+                        {
+                            <li class="d-flex justify-content-between gap-2 py-2 border-bottom small">
+                                <span>@line.BookName <span class="text-muted">× @line.Quantity</span></span>
+                                <span class="text-nowrap">@Money.Format(line.Subtotal)</span>
+                            </li>
+                        }
+                    </ul>
+                    <p class="d-flex justify-content-between fs-5 fw-bold mt-3 mb-0">
+                        <span>Total</span><span id="checkout-total">@Money.Format(cart.Total)</span>
+                    </p>
+                    <a class="small" asp-action="GetUserCart">Edit cart</a>
+                </div>
+            </section>
+        </div>
+    }
+</div>
+
+@section Scripts{
+    <script>
+        (function () {
+            // jump to the first error
+            var errors = document.getElementById("checkout-errors");
+            var firstInvalid = document.querySelector('#checkoutForm [aria-invalid="true"]');
+            if (firstInvalid) firstInvalid.focus();
+            else if (errors) errors.focus();
+
+            // stop a double submit
+            document.getElementById("checkoutForm").addEventListener("submit", e => {
+                var button = e.submitter;
+                if (!button) return;
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Placing order…';
+            });
+        })();
+    </script>
+}

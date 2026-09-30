@@ -1,0 +1,123 @@
+@model AdminOrderDetailsModel
+@using System.Globalization
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = $"Order #{Model.Id}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="AllOrders">Orders</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Order #@Model.Id</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+    <h1 class="h3 mb-0">Order #@Model.Id</h1>
+    <span class="badge fs-6 @OrderStatusStyle.BadgeClass(Model.StatusName)" id="order-status">@Model.StatusName</span>
+</div>
+<p class="text-muted mb-3">Placed on @Model.CreateDate.ToString("d MMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture) (UTC).</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <section class="card h-100" aria-labelledby="customerHeading">
+            <div class="card-body">
+                <h2 id="customerHeading" class="h6 text-uppercase text-muted">Deliver to</h2>
+                <p class="mb-2">@Model.Name<br /><span style="white-space:pre-line">@Model.Address</span></p>
+                <p class="small mb-0"><a href="mailto:@Model.Email">@Model.Email</a><br />@Model.MobileNumber</p>
+                @if (Model.HasCustomerAccount)
+                {
+                    <a asp-controller="Customer" asp-action="Details" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary mt-2" id="view-customer">View customer</a>
+                }
+                else
+                {
+                    <p class="small text-muted mt-2 mb-0" id="no-customer-account">The account that placed this order no longer exists.</p>
+                }
+            </div>
+        </section>
+    </div>
+    <div class="col-md-4">
+        <section class="card h-100" aria-labelledby="paymentHeading">
+            <div class="card-body">
+                <h2 id="paymentHeading" class="h6 text-uppercase text-muted">Payment</h2>
+                <p class="mb-2">
+                    @Model.PaymentMethod
+                    <span class="badge @(Model.IsPaid ? "text-bg-success" : "text-bg-light border") ms-1" id="payment-status">@(Model.IsPaid ? "Paid" : "Not paid")</span>
+                </p>
+                <form asp-action="TogglePaymentStatus" asp-route-orderId="@Model.Id" method="post">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">@(Model.IsPaid ? "Mark as not paid" : "Mark as paid")</button>
+                </form>
+            </div>
+        </section>
+    </div>
+    <div class="col-md-4">
+        <section class="card h-100" aria-labelledby="statusHeading">
+            <div class="card-body">
+                <h2 id="statusHeading" class="h6 text-uppercase text-muted">Status</h2>
+                @if (Model.NextStatuses.Any())
+                {
+                    <form asp-action="UpdateOrderStatus" method="post" id="status-form">
+                        <input type="hidden" name="OrderId" value="@Model.Id" />
+                        <input type="hidden" name="ExpectedStatusId" value="@Model.OrderStatusId" />
+                        <label for="OrderStatusId" class="form-label small mb-1">Move from @Model.StatusName to</label>
+                        <div class="d-flex gap-2">
+                            <select id="OrderStatusId" name="OrderStatusId" class="form-select form-select-sm" required>
+                                @foreach (var status in Model.NextStatuses)
+                                {
+                                    <option value="@status.Id">@status.StatusName</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                        </div>
+                    </form>
+                    @if (Model.NextStatuses.Any(s => OrderWorkflow.RestocksOnEntry(s.StatusName)))
+                    {
+                        <p class="small text-muted mt-2 mb-0">Cancelling puts the ordered books back in stock.</p>
+                    }
+                    @if (Model.NextStatuses.Any(s => s.StatusName == OrderWorkflow.Returned))
+                    {
+                        <p class="small text-muted mt-2 mb-0">Returned books are not restocked automatically. Check them, then add good copies on the <a asp-controller="Stock" asp-action="Index">Inventory</a> page.</p>
+                    }
+                }
+                else
+                {
+                    <p class="mb-0" id="status-final">This order is finished; its status cannot change any more.</p>
+                }
+            </div>
+        </section>
+    </div>
+</div>
+
+<h2 class="h5">Items</h2>
+<div class="table-responsive">
+    <table class="table align-middle" id="order-lines">
+        <thead>
+            <tr>
+                <th scope="col">Book</th>
+                <th scope="col">Genre</th>
+                <th scope="col" class="text-end">Unit price</th>
+                <th scope="col" class="text-center">Qty</th>
+                <th scope="col" class="text-end">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in Model.Lines)
+            {
+                <tr class="order-line">
+                    <td><a asp-controller="Home" asp-action="Details" asp-route-id="@line.BookId">@line.BookName</a></td>
+                    <td>@line.GenreName</td>
+                    <td class="text-end">@Money.Format(line.UnitPrice)</td>
+                    <td class="text-center">@line.Quantity</td>
+                    <td class="text-end">@Money.Format(line.Subtotal)</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th scope="row" colspan="4" class="text-end">Order total</th>
+                <th class="text-end" id="order-total">@Money.Format(Model.Total)</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+<p class="small text-muted">Prices are what the customer paid when they ordered.</p>

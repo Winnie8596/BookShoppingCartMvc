@@ -1,0 +1,146 @@
+@model AdminDashboardModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Dashboard";
+    var culture = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+<h1 class="h3 mb-3">Dashboard</h1>
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3 mb-4" id="dashboard-metrics">
+    <div class="col">
+        <a class="card h-100 text-decoration-none text-reset" asp-controller="Book" asp-action="Index">
+            <div class="card-body">
+                <h2 class="h6 text-muted mb-1"><i class="bi bi-book" aria-hidden="true"></i> Books</h2>
+                <p class="fs-3 fw-semibold mb-0" id="metric-books">@Model.TotalBooks</p>
+            </div>
+        </a>
+    </div>
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h6 text-muted mb-1"><i class="bi bi-people" aria-hidden="true"></i> Customers</h2>
+                <p class="fs-3 fw-semibold mb-0" id="metric-customers">@Model.TotalCustomers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <a class="card h-100 text-decoration-none text-reset" asp-action="AllOrders">
+            <div class="card-body">
+                <h2 class="h6 text-muted mb-1"><i class="bi bi-receipt" aria-hidden="true"></i> Orders</h2>
+                <p class="fs-3 fw-semibold mb-0" id="metric-orders">@Model.TotalOrders</p>
+            </div>
+        </a>
+    </div>
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h6 text-muted mb-1"><i class="bi bi-cash-stack" aria-hidden="true"></i> Revenue</h2>
+                <p class="fs-3 fw-semibold mb-0" id="metric-revenue">@Money.Format(Model.TotalRevenue)</p>
+                <p class="small text-muted mb-0">Paid orders, excluding cancelled, returned and refunded.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <a class="card h-100 text-decoration-none text-reset" asp-controller="Stock" asp-action="Index">
+            <div class="card-body">
+                <h2 class="h6 text-muted mb-1"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Low stock</h2>
+                <p class="fs-3 fw-semibold mb-0" id="metric-low-stock">@Model.LowStockCount</p>
+                <p class="small text-muted mb-0">@StockLevel.LowStockThreshold or fewer left.</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <section class="col-12 col-lg-7" aria-labelledby="recentOrdersHeading">
+        <div class="d-flex justify-content-between align-items-baseline">
+            <h2 id="recentOrdersHeading" class="h5">Recent orders</h2>
+            <a class="small" asp-action="AllOrders">All orders</a>
+        </div>
+        @if (Model.RecentOrders.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle" id="recent-orders">
+                    <thead>
+                        <tr>
+                            <th scope="col">Order</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Customer</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Payment</th>
+                            <th scope="col" class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in Model.RecentOrders)
+                        {
+                            <tr>
+                                <td><a asp-action="OrderDetails" asp-route-id="@order.Id">#@order.Id</a></td>
+                                <td>@order.CreateDate.ToString("d MMM yyyy", culture)</td>
+                                <td>@order.Name</td>
+                                <td><span class="badge @OrderStatusStyle.BadgeClass(order.StatusName)">@order.StatusName</span></td>
+                                <td>@(order.IsPaid ? "Paid" : "Not paid")</td>
+                                <td class="text-end">@Money.Format(order.Total)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted border rounded p-3">No orders yet.</p>
+        }
+
+        @if (Model.OrdersByStatus.Any())
+        {
+            <h3 class="h6 mt-3">Orders by status</h3>
+            <ul class="list-inline" id="orders-by-status">
+                @foreach (var status in Model.OrdersByStatus.OrderByDescending(s => s.Count))
+                {
+                    <li class="list-inline-item mb-1">
+                        <a asp-action="AllOrders" asp-route-status="@status.StatusName" class="badge text-decoration-none @OrderStatusStyle.BadgeClass(status.StatusName)">@status.StatusName: @status.Count</a>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section class="col-12 col-lg-5" aria-labelledby="lowStockHeading">
+        <div class="d-flex justify-content-between align-items-baseline">
+            <h2 id="lowStockHeading" class="h5">Low stock</h2>
+            <a class="small" asp-controller="Stock" asp-action="Index">All stock</a>
+        </div>
+        @if (Model.LowStockBooks.Any())
+        {
+            <table class="table table-sm align-middle" id="low-stock">
+                <thead>
+                    <tr>
+                        <th scope="col">Book</th>
+                        <th scope="col" class="text-end">Stock</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.LowStockBooks)
+                    {
+                        <tr>
+                            <td><a asp-controller="Stock" asp-action="ManangeStock" asp-route-bookId="@item.BookId">@item.BookName</a></td>
+                            <td class="text-end">@item.Quantity</td>
+                            <td><span class="badge @StockLevel.BadgeClass(item.Quantity)">@StockLevel.Status(item.Quantity)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (Model.LowStockCount > Model.LowStockBooks.Count)
+            {
+                <p class="small text-muted">Showing the @Model.LowStockBooks.Count lowest of @Model.LowStockCount.</p>
+            }
+        }
+        else
+        {
+            <p class="text-muted border rounded p-3">Every book has more than @StockLevel.LowStockThreshold in stock.</p>
+        }
+    </section>
+</div>

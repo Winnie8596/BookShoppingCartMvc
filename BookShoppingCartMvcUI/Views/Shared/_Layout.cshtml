@@ -1,0 +1,120 @@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@{
+    var controller = ViewContext.RouteData.Values["controller"] as string;
+    var action = ViewContext.RouteData.Values["action"] as string;
+    bool onCatalog = controller == "Home" && (action == "Index" || action == "Details");
+    bool onCart = controller == "Cart";
+    bool onAssistant = controller == "Assistant";
+    bool signedIn = SignInManager.IsSignedIn(User);
+    bool isAdmin = User.IsInRole(Roles.Admin.ToString());
+    var title = ViewData["Title"] as string;
+}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="EBookStore - browse, review and buy books online.">
+    <meta name="theme-color" content="#2c3e50">
+    <title>@(string.IsNullOrEmpty(title) ? "EBookStore - Online book store" : $"{title} - EBookStore")</title>
+    <link href="~/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
+    <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <a class="skip-link visually-hidden-focusable" href="#main">Skip to main content</a>
+
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary" aria-label="Main">
+            <div class="container">
+                <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-book-half" aria-hidden="true"></i>
+                    <span>EBookStore</span>
+                </a>
+
+                @* outside the collapse so the cart is always visible on mobile, pushed right on desktop *@
+                <a class="nav-link navbar-cart text-white ms-auto me-3 me-lg-0 ms-lg-3 order-lg-last" asp-area="" asp-controller="Cart" asp-action="GetUserCart"
+                   aria-current="@(onCart ? "page" : null)" title="Cart">
+                    <i class="bi bi-cart3 fs-5" aria-hidden="true"></i>
+                    <span class="visually-hidden">Cart</span>
+                    @if (signedIn)
+                    {
+                        @await Component.InvokeAsync("CartCount")
+                    }
+                </a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link @(onCatalog ? "active" : "")" aria-current="@(onCatalog ? "page" : null)" asp-area="" asp-controller="Home" asp-action="Index">
+                                <i class="bi bi-grid" aria-hidden="true"></i> Browse books
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(onAssistant ? "active" : "")" aria-current="@(onAssistant ? "page" : null)" asp-area="" asp-controller="Assistant" asp-action="Index">
+                                <i class="bi bi-chat-square-text" aria-hidden="true"></i> Ask the assistant
+                            </a>
+                        </li>
+                        @if (isAdmin)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="AdminOperations" asp-action="Dashboard">
+                                    <i class="bi bi-speedometer2" aria-hidden="true"></i> Admin dashboard
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                    <partial name="_LoginPartial" />
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main" class="container flex-grow-1 py-3" tabindex="-1">
+        <partial name="_Notifications" />
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer border-top bg-light mt-4">
+        <div class="container py-4">
+            <div class="row g-4">
+                <div class="col-12 col-md-5">
+                    <p class="fw-bold mb-1"><i class="bi bi-book-half" aria-hidden="true"></i> EBookStore</p>
+                    <p class="text-muted small mb-0">Find your next favourite book, save it for later, and have it delivered.</p>
+                </div>
+                <nav class="col-6 col-md-3" aria-label="Shop">
+                    <p class="fw-bold small text-uppercase mb-2">Shop</p>
+                    <ul class="list-unstyled small mb-0">
+                        <li><a asp-area="" asp-controller="Home" asp-action="Index">Browse books</a></li>
+                        <li><a asp-area="" asp-controller="Assistant" asp-action="Index">Book assistant</a></li>
+                        <li><a asp-area="" asp-controller="Cart" asp-action="GetUserCart">Cart</a></li>
+                    </ul>
+                </nav>
+                <nav class="col-6 col-md-4" aria-label="Account and help">
+                    <p class="fw-bold small text-uppercase mb-2">Account &amp; help</p>
+                    <ul class="list-unstyled small mb-0">
+                        @if (signedIn)
+                        {
+                            <li><a asp-area="" asp-controller="UserOrder" asp-action="UserOrders">My orders</a></li>
+                        }
+                        else
+                        {
+                            <li><a asp-area="Identity" asp-page="/Account/Login">Log in</a></li>
+                        }
+                        <li><a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy policy</a></li>
+                    </ul>
+                </nav>
+            </div>
+            <p class="text-muted small mt-4 mb-0">&copy; @DateTime.Now.Year EBookStore</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,13 @@
+@{
+    ViewData["Title"] = "Order not placed";
+}
+
+<div class="py-5 text-center mx-auto confirmation" id="order-failure">
+    <i class="bi bi-exclamation-circle-fill text-danger display-3" aria-hidden="true"></i>
+    <h1 class="h2 mt-3">We couldn't place your order</h1>
+    <p class="lead">
+        No order was created and your cart has not been changed.
+        This usually happens when a book sold out while you were checking out.
+    </p>
+    <a class="btn btn-primary" asp-controller="Cart" asp-action="GetUserCart">Review your cart</a>
+</div>

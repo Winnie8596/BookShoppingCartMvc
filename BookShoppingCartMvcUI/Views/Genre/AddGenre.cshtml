@@ -1,0 +1,17 @@
+@model GenreDTO
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Add genre";
+}
+<div class="col-12 col-lg-8 col-xl-6">
+    <a asp-action="Index" class="small"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to genres</a>
+    <h1 class="h3 my-2">Add genre</h1>
+    <form asp-action="AddGenre" method="post">
+        <div class="mb-3">
+            <label asp-for="GenreName" class="form-label">Genre name *</label>
+            <input asp-for="GenreName" class="form-control" maxlength="40" required />
+            <span asp-validation-for="GenreName" class="text-danger small"></span>
+        </div>
+        <button type="submit" class="btn btn-primary">Add genre</button>
+    </form>
+</div>

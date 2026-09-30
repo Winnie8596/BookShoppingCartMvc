@@ -1,0 +1,144 @@
+@model InventoryListModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Inventory";
+    var statuses = new Dictionary<string, string>
+    {
+        ["all"] = "All books",
+        ["out"] = "Out of stock",
+        ["low"] = "Low stock",
+        ["in"] = "In stock"
+    };
+    var sorts = new Dictionary<string, string>
+    {
+        ["stock"] = "Stock (lowest first)",
+        ["stock_desc"] = "Stock (highest first)",
+        ["title"] = "Title (A-Z)"
+    };
+    var tiles = new[]
+    {
+        (Status: "out", Label: "Out of stock", Count: Model.OutOfStockCount, Badge: StockLevel.BadgeClass(0)),
+        (Status: "low", Label: $"Low stock (1-{StockLevel.LowStockThreshold})", Count: Model.LowStockCount, Badge: StockLevel.BadgeClass(1)),
+        (Status: "in", Label: "In stock", Count: Model.InStockCount, Badge: StockLevel.BadgeClass(StockLevel.LowStockThreshold + 1))
+    };
+    bool filtered = !string.IsNullOrEmpty(Model.Search) || Model.Status != "all";
+    // keep the filters when changing page/status
+    object PageRoute(int page) => new { search = Model.Search, status = Model.Status, sort = Model.Sort, pageNumber = page };
+    object StatusRoute(string status) => new { search = Model.Search, status, sort = Model.Sort };
+}
+
+<h1 class="h3 mb-3">Inventory</h1>
+
+<div class="row row-cols-1 row-cols-sm-3 g-3 mb-3" id="inventory-summary">
+    @foreach (var tile in tiles)
+    {
+        bool current = Model.Status == tile.Status;
+        <div class="col">
+            <a class="card h-100 text-decoration-none text-reset @(current ? "border-primary border-2" : "")"
+               href="@Url.Action("Index", StatusRoute(tile.Status))" aria-current="@(current ? "true" : null)">
+                <div class="card-body">
+                    <h2 class="h6 mb-1"><span class="badge @tile.Badge">@tile.Label</span></h2>
+                    <p class="fs-3 fw-semibold mb-0" id="count-@tile.Status">@tile.Count</p>
+                </div>
+            </a>
+        </div>
+    }
+</div>
+
+<form asp-action="Index" method="get" class="row g-2 align-items-end mb-3" role="search" aria-label="Filter inventory">
+    <div class="col-12 col-md-5">
+        <label for="search" class="form-label small mb-1">Title or author</label>
+        <input type="search" id="search" name="search" value="@Model.Search" class="form-control" placeholder="Search books" />
+    </div>
+    <div class="col-6 col-md-2">
+        <label for="status" class="form-label small mb-1">Status</label>
+        <select id="status" name="status" class="form-select">
+            @foreach (var (value, text) in statuses)
+            {
+                <option value="@value" selected="@(value == Model.Status)">@text</option>
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label for="sort" class="form-label small mb-1">Sort by</label>
+        <select id="sort" name="sort" class="form-select">
+            @foreach (var (value, text) in sorts)
+            {
+                <option value="@value" selected="@(value == Model.Sort)">@text</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-grow-1">Apply</button>
+        @if (filtered)
+        {
+            <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+        }
+    </div>
+</form>
+
+<p class="text-muted small" id="inventory-count" aria-live="polite">
+    @Model.TotalCount @(Model.TotalCount == 1 ? "book" : "books")@(filtered ? " match" : "")
+</p>
+
+@if (Model.Items.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle" id="inventory">
+            <thead>
+                <tr>
+                    <th scope="col">Book</th>
+                    <th scope="col" class="text-end">Stock</th>
+                    <th scope="col">Status</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td>
+                            <span class="fw-semibold">@item.BookName</span>
+                            <span class="d-block small text-muted">@item.AuthorName</span>
+                        </td>
+                        <td class="text-end">@item.Quantity</td>
+                        <td><span class="badge @StockLevel.BadgeClass(item.Quantity)">@StockLevel.Status(item.Quantity)</span></td>
+                        <td class="text-end">
+                            <a asp-action="ManangeStock" asp-route-bookId="@item.BookId" class="btn btn-sm btn-outline-primary"
+                               aria-label="Update stock of @item.BookName">Update stock</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (Model.TotalCount > 0)
+{
+    <p>There are no books on page @Model.PageNumber. <a href="@Url.Action("Index", StatusRoute(Model.Status))">Go to the first page</a></p>
+}
+else if (filtered)
+{
+    <p class="border rounded p-3">No books match these filters. <a asp-action="Index">Show all books</a></p>
+}
+else
+{
+    <p class="border rounded p-3">There are no books yet. <a asp-controller="Book" asp-action="AddBook">Add the first one</a></p>
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Inventory pages">
+        <ul class="pagination flex-wrap">
+            <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", PageRoute(Model.PageNumber - 1))">Previous</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page @Model.PageNumber of @Model.TotalPages</span>
+            </li>
+            <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", PageRoute(Model.PageNumber + 1))">Next</a>
+            </li>
+        </ul>
+    </nav>
+}

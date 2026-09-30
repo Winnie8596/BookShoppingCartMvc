@@ -1,0 +1,13 @@
+@model BookDTO
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Add book";
+}
+<div class="col-12 col-lg-8 col-xl-6">
+    <a asp-action="Index" class="small"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to books</a>
+    <h1 class="h3 my-2">Add book</h1>
+    <form asp-action="AddBook" enctype="multipart/form-data" method="post">
+        <partial name="_BookForm" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsNew"] = true }' />
+        <button type="submit" class="btn btn-primary">Add book</button>
+    </form>
+</div>

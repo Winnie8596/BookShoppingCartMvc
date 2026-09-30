@@ -1,0 +1,18 @@
+@* layout for all the My account pages (incl. the identity profile pages) with the side menu.
+   pages set ViewData["AccountSection"] for the active item *@
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var section = ViewData["AccountSection"] as string ?? "";
+}
+<div class="row g-md-4">
+    <div class="col-md-3 col-xl-2">
+        <partial name="/Views/Shared/_AccountNav.cshtml" model="section" />
+    </div>
+    <div class="col-md-9 col-xl-10">
+        @RenderBody()
+    </div>
+</div>
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

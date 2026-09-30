@@ -1,0 +1,57 @@
+@model BookDTO
+@* shared by add + edit. ViewData["IsNew"] shows the initial stock field *@
+@{
+    bool isNew = ViewData["IsNew"] as bool? ?? false;
+}
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+<div class="mb-3">
+    <label asp-for="BookName" class="form-label">Title *</label>
+    <input asp-for="BookName" class="form-control" maxlength="40" required />
+    <span asp-validation-for="BookName" class="text-danger small"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="AuthorName" class="form-label">Author *</label>
+    <input asp-for="AuthorName" class="form-control" maxlength="40" required />
+    <span asp-validation-for="AuthorName" class="text-danger small"></span>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-sm-6">
+        <label asp-for="GenreId" class="form-label">Genre *</label>
+        <select asp-for="GenreId" asp-items="Model.GenreList" class="form-select" required>
+            <option value="">Select a genre</option>
+        </select>
+        <span asp-validation-for="GenreId" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Price" class="form-label">Price (RM) *</label>
+        @* step so sen are allowed, min/max same as the server *@
+        <input asp-for="Price" type="number" step="0.01" min="0.01" max="@BookDTO.MaxPrice" class="form-control" required />
+        <span asp-validation-for="Price" class="text-danger small"></span>
+    </div>
+</div>
+
+@if (isNew)
+{
+    <div class="mb-3">
+        <label asp-for="InitialStock" class="form-label">Initial stock</label>
+        <input asp-for="InitialStock" type="number" step="1" min="0" class="form-control" aria-describedby="initialStockHelp" />
+        <div id="initialStockHelp" class="form-text">How many copies you have now. Change it later on the Stock page.</div>
+        <span asp-validation-for="InitialStock" class="text-danger small"></span>
+    </div>
+}
+
+<div class="mb-3">
+    <label asp-for="ImageFile" class="form-label">Cover image</label>
+    @if (!string.IsNullOrEmpty(Model.Image))
+    {
+        <div class="mb-2">
+            <img src="/images/@Model.Image" alt="Current cover of @Model.BookName" style="width:80px;height:100px;object-fit:cover" />
+        </div>
+    }
+    <input asp-for="ImageFile" type="file" accept=".jpg,.jpeg,.png" class="form-control" aria-describedby="imageHelp" />
+    <div id="imageHelp" class="form-text">JPG or PNG, up to 1 MB.@(string.IsNullOrEmpty(Model.Image) ? "" : " Leave empty to keep the current cover.")</div>
+    <span asp-validation-for="ImageFile" class="text-danger small"></span>
+</div>

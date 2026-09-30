@@ -1,0 +1,29 @@
+@{
+    ViewData["Title"] = "Order placed";
+    var name = TempData["orderName"] as string;
+    var payment = TempData["orderPayment"] as string;
+}
+
+<div class="text-center py-5 mx-auto confirmation" id="order-success">
+    <i class="bi bi-check-circle-fill text-success display-3" aria-hidden="true"></i>
+    <h1 class="h2 mt-3">Thank you@(string.IsNullOrEmpty(name) ? "" : $", {name}")! Your order has been placed.</h1>
+    <p class="lead">
+        @if (payment == nameof(PaymentMethods.COD))
+        {
+            <text>Please have the payment ready for the courier when your books arrive.</text>
+        }
+        else if (payment == nameof(PaymentMethods.Online))
+        {
+            <text>We'll send you payment instructions shortly.</text>
+        }
+        else
+        {
+            <text>You can follow its progress in your orders.</text>
+        }
+    </p>
+    <p class="text-muted">Your order status starts as <strong>Pending</strong> and is updated as we prepare and ship it.</p>
+    <div class="d-flex flex-column flex-sm-row justify-content-center gap-2 mt-4">
+        <a class="btn btn-primary" asp-controller="UserOrder" asp-action="UserOrders">View my orders</a>
+        <a class="btn btn-outline-primary" asp-controller="Home" asp-action="Index">Continue shopping</a>
+    </div>
+</div>

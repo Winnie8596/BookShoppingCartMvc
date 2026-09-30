@@ -1,0 +1,146 @@
+@model CartViewModel
+@{
+    ViewData["Title"] = "Your cart";
+    int itemCount = Model.Lines.Sum(l => l.Quantity);
+}
+
+@if (Model.IsEmpty)
+{
+    <div class="empty-state text-center py-5" id="empty-cart">
+        <i class="bi bi-cart display-4 text-muted" aria-hidden="true"></i>
+        <h1 class="h4 mt-3">Cart is empty</h1>
+        <p class="text-muted">Looks like you haven't added any books yet.</p>
+        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Browse books</a>
+    </div>
+}
+else
+{
+    <h1 class="h3 mb-3">Your cart <small class="text-muted fs-6">(@itemCount @(itemCount == 1 ? "item" : "items"))</small></h1>
+
+    @if (Model.HasStockProblems)
+    {
+        <div class="alert alert-warning" id="stock-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+            Some items in your cart are no longer available in the quantity you selected.
+            Please reduce or remove them before checking out.
+        </div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <ul class="list-unstyled mb-3" aria-label="Items in your cart">
+                @foreach (var line in Model.Lines)
+                {
+                    var formId = $"qty-form-{line.BookId}";
+                    <li class="card mb-3 cart-line @(line.ExceedsStock ? "border-danger" : "")">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-3 col-sm-2">
+                                    <a asp-controller="Home" asp-action="Details" asp-route-id="@line.BookId" tabindex="-1" aria-hidden="true" class="cart-cover">
+                                        <img src="/images/@(string.IsNullOrEmpty(line.Image) ? "NoImage.png" : line.Image)" alt="" width="80" height="120" loading="lazy" />
+                                    </a>
+                                </div>
+                                <div class="col-9 col-sm-10">
+                                    <div class="d-flex flex-wrap justify-content-between gap-2">
+                                        <div>
+                                            <h2 class="h6 mb-1"><a class="text-reset" asp-controller="Home" asp-action="Details" asp-route-id="@line.BookId">@line.BookName</a></h2>
+                                            <p class="small text-muted mb-1">@line.GenreName</p>
+                                            <p class="small mb-1"><span class="line-price">@Money.Format(line.UnitPrice) × @line.Quantity</span></p>
+                                            @if (line.ExceedsStock)
+                                            {
+                                                <p class="text-danger small fw-semibold mb-1 stock-problem">
+                                                    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                                                    @(line.AvailableStock <= 0 ? "Now out of stock." : $"Only {line.AvailableStock} left in stock.")
+                                                </p>
+                                            }
+                                        </div>
+                                        <p class="fw-bold mb-0 text-end"><span class="visually-hidden">Subtotal: </span><span class="line-subtotal">@Money.Format(line.Subtotal)</span></p>
+                                    </div>
+
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                                        @* typed qty goes to UpdateQuantity. -/+ send step=-1/1 and skip the browser range check so a line over the stock can still go down.
+                                           Update is first in the markup so Enter uses it and not - *@
+                                        <form asp-action="UpdateQuantity" method="post" id="@formId" class="d-flex align-items-center gap-2 cart-qty-form">
+                                            <input type="hidden" name="bookId" value="@line.BookId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary order-last qty-update">Update</button>
+                                            <div class="input-group input-group-sm qty-stepper">
+                                                <button type="submit" name="step" value="-1" class="btn btn-outline-secondary" formnovalidate
+                                                        aria-label="Decrease quantity of @line.BookName" disabled="@(line.Quantity <= 1)">
+                                                    <i class="bi bi-dash" aria-hidden="true"></i>
+                                                </button>
+                                                <input type="number" name="qty" value="@line.Quantity" min="1" max="@Math.Max(line.AvailableStock, 1)"
+                                                       class="form-control text-center" inputmode="numeric" aria-label="Quantity of @line.BookName" />
+                                                <button type="submit" name="step" value="1" class="btn btn-outline-secondary" formnovalidate
+                                                        aria-label="Increase quantity of @line.BookName" disabled="@(!line.CanIncrease)">
+                                                    <i class="bi bi-plus" aria-hidden="true"></i>
+                                                </button>
+                                            </div>
+                                        </form>
+                                        <form asp-action="RemoveLine" method="post">
+                                            <input type="hidden" name="bookId" value="@line.BookId" />
+                                            <button type="submit" class="btn btn-sm btn-link text-danger px-0" aria-label="Remove @line.BookName from cart">
+                                                <i class="bi bi-trash" aria-hidden="true"></i> Remove
+                                            </button>
+                                        </form>
+                                    </div>
+                                    @if (!line.CanIncrease && !line.ExceedsStock)
+                                    {
+                                        <p class="small text-muted mb-0 mt-1 qty-limit">No more in stock</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ul>
+
+            <div class="d-flex flex-wrap justify-content-between gap-2">
+                <a class="btn btn-link px-0" asp-controller="Home" asp-action="Index"><i class="bi bi-arrow-left" aria-hidden="true"></i> Continue shopping</a>
+                <form asp-action="ClearCart" method="post" onsubmit="return confirm('Remove all items from your cart?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Clear cart</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <section class="card order-summary" aria-labelledby="summaryHeading">
+                <div class="card-body">
+                    <h2 id="summaryHeading" class="h5">Order summary</h2>
+                    <dl class="d-flex justify-content-between mb-2">
+                        <dt class="fw-normal">Items (@itemCount)</dt>
+                        <dd class="mb-0">@Money.Format(Model.Total)</dd>
+                    </dl>
+                    <dl class="d-flex justify-content-between mb-2 small text-muted">
+                        <dt class="fw-normal">Delivery</dt>
+                        <dd class="mb-0">Arranged after ordering</dd>
+                    </dl>
+                    <hr />
+                    <p class="d-flex justify-content-between fs-5 fw-bold">
+                        <span>Total</span><span id="cart-total">@Money.Format(Model.Total)</span>
+                    </p>
+                    @if (Model.CanCheckout)
+                    {
+                        <a class="btn btn-primary btn-lg w-100" href="/Cart/Checkout">Proceed to checkout</a>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-primary btn-lg w-100" disabled aria-describedby="stock-warning">Proceed to checkout</button>
+                        <p class="small text-danger mt-2 mb-0">Fix the highlighted items to continue.</p>
+                    }
+                </div>
+            </section>
+        </div>
+    </div>
+}
+
+@section Scripts{
+    <script>
+        // with js the qty saves on change, the Update button is only kept for screen readers / Enter
+        document.querySelectorAll(".cart-qty-form").forEach(form => {
+            form.querySelector(".qty-update").classList.add("visually-hidden");
+            form.querySelector('input[name="qty"]').addEventListener("change", e => {
+                form.requestSubmit(form.querySelector(".qty-update"));   // browser shows the out of range message
+            });
+        });
+    </script>
+}

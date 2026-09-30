@@ -1,0 +1,145 @@
+@model AdminBookListModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Books";
+    var sorts = new Dictionary<string, string>
+    {
+        ["newest"] = "Newest first",
+        ["title"] = "Title (A-Z)",
+        ["price"] = "Price (low to high)",
+        ["price_desc"] = "Price (high to low)",
+        ["stock"] = "Stock (lowest first)"
+    };
+    bool filtered = !string.IsNullOrEmpty(Model.Search) || Model.GenreId != null;
+    // keep the filters when changing page
+    object PageRoute(int page) => new { search = Model.Search, genreId = Model.GenreId, sort = Model.Sort, pageNumber = page };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Books</h1>
+    <a asp-action="AddBook" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add book</a>
+</div>
+
+<form asp-action="Index" method="get" class="row g-2 align-items-end mb-3" role="search" aria-label="Filter books">
+    <div class="col-12 col-md-5">
+        <label for="search" class="form-label small mb-1">Title or author</label>
+        <input type="search" id="search" name="search" value="@Model.Search" class="form-control" placeholder="Search books" />
+    </div>
+    <div class="col-6 col-md-3">
+        <label for="genreId" class="form-label small mb-1">Genre</label>
+        <select id="genreId" name="genreId" class="form-select">
+            <option value="">All genres</option>
+            @foreach (var genre in Model.Genres)
+            {
+                <option value="@genre.Id" selected="@(genre.Id == Model.GenreId)">@genre.GenreName</option>
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <label for="sort" class="form-label small mb-1">Sort by</label>
+        <select id="sort" name="sort" class="form-select">
+            @foreach (var (value, text) in sorts)
+            {
+                <option value="@value" selected="@(value == Model.Sort)">@text</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-grow-1">Apply</button>
+        @if (filtered)
+        {
+            <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+        }
+    </div>
+</form>
+
+<p class="text-muted small" id="book-count" aria-live="polite">
+    @Model.TotalCount @(Model.TotalCount == 1 ? "book" : "books")@(filtered ? " match" : "")
+</p>
+
+@if (Model.Books.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle" id="admin-books">
+            <thead>
+                <tr>
+                    <th scope="col"><span class="visually-hidden">Cover</span></th>
+                    <th scope="col">Book</th>
+                    <th scope="col">Genre</th>
+                    <th scope="col" class="text-end">Price</th>
+                    <th scope="col">Stock</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var book in Model.Books)
+                {
+                    <tr>
+                        <td>
+                            <img src="@(string.IsNullOrWhiteSpace(book.Image) ? "/Images/NoImage.png" : $"/images/{book.Image}")"
+                                 alt="" style="width:48px;height:60px;object-fit:cover" />
+                        </td>
+                        <td>
+                            <span class="fw-semibold">@book.BookName</span>
+                            <span class="d-block small text-muted">@book.AuthorName</span>
+                        </td>
+                        <td>@book.GenreName</td>
+                        <td class="text-end">@Money.Format(book.Price)</td>
+                        <td>
+                            <a asp-controller="Stock" asp-action="ManangeStock" asp-route-bookId="@book.Id" class="text-decoration-none"
+                               aria-label="Update stock of @book.BookName (@book.Quantity, @StockLevel.Status(book.Quantity))">
+                                @book.Quantity <span class="badge @StockLevel.BadgeClass(book.Quantity)">@StockLevel.Status(book.Quantity)</span>
+                            </a>
+                        </td>
+                        <td class="text-nowrap">
+                            <a asp-action="UpdateBook" asp-route-id="@book.Id" class="btn btn-sm btn-outline-primary" aria-label="Edit @book.BookName">Edit</a>
+                            @if (book.HasOrders)
+                            {
+                                @* server blocks this delete anyway, disabled so the admin can see why *@
+                                <span class="d-inline-block" tabindex="0" title="Ordered books are kept for order history. Set stock to 0 to stop selling it.">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" disabled aria-label="@book.BookName has orders and cannot be deleted">Delete</button>
+                                </span>
+                            }
+                            else
+                            {
+                                <form asp-action="DeleteBook" asp-route-id="@book.Id" method="post" class="d-inline"
+                                      onsubmit="return window.confirm('Delete this book? This cannot be undone.')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete @book.BookName">Delete</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (Model.TotalCount > 0)
+{
+    <p>There are no books on page @Model.PageNumber. <a asp-action="Index" asp-all-route-data='new Dictionary<string, string?> { ["search"] = Model.Search, ["genreId"] = Model.GenreId?.ToString(), ["sort"] = Model.Sort }'>Go to the first page</a></p>
+}
+else if (filtered)
+{
+    <p class="border rounded p-3">No books match these filters. <a asp-action="Index">Show all books</a></p>
+}
+else
+{
+    <p class="border rounded p-3">There are no books yet. <a asp-action="AddBook">Add the first one</a></p>
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Book pages">
+        <ul class="pagination flex-wrap">
+            <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", PageRoute(Model.PageNumber - 1))">Previous</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page @Model.PageNumber of @Model.TotalPages</span>
+            </li>
+            <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", PageRoute(Model.PageNumber + 1))">Next</a>
+            </li>
+        </ul>
+    </nav>
+}

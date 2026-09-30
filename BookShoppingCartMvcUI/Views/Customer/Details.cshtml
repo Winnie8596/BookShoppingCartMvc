@@ -1,0 +1,133 @@
+@model AdminCustomerDetailsModel
+@using System.Globalization
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = Model.Email;
+    var culture = CultureInfo.InvariantCulture;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Customers</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Email</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-3 text-break">@Model.Email</h1>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <section class="card h-100" aria-labelledby="accountHeading">
+            <div class="card-body">
+                <h2 id="accountHeading" class="h6 text-uppercase text-muted">Account</h2>
+                <dl class="row small mb-0" id="account">
+                    <dt class="col-5">User name</dt>
+                    <dd class="col-7 text-break">@Model.UserName</dd>
+                    <dt class="col-5">Phone</dt>
+                    <dd class="col-7">@(string.IsNullOrEmpty(Model.PhoneNumber) ? "Not given" : Model.PhoneNumber)</dd>
+                    <dt class="col-5">Email</dt>
+                    <dd class="col-7" id="email-confirmed">@(Model.EmailConfirmed ? "Confirmed" : "Not confirmed")</dd>
+                    <dt class="col-5">Two-factor</dt>
+                    <dd class="col-7">@(Model.TwoFactorEnabled ? "On" : "Off")</dd>
+                    <dt class="col-5">Sign-in</dt>
+                    <dd class="col-7" id="lockout">
+                        @if (Model.IsLockedOut)
+                        {
+                            <span class="badge text-bg-danger">Locked out</span>
+                            <span class="d-block">until @Model.LockoutEnd!.Value.UtcDateTime.ToString("d MMM yyyy HH:mm", culture) (UTC)</span>
+                        }
+                        else
+                        {
+                            <span>Not locked</span>
+                            @if (Model.AccessFailedCount > 0)
+                            {
+                                <span class="d-block text-muted">@Model.AccessFailedCount failed @(Model.AccessFailedCount == 1 ? "attempt" : "attempts") since the last sign-in</span>
+                            }
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </section>
+    </div>
+    <div class="col-md-4">
+        <section class="card h-100" aria-labelledby="deliveryHeading">
+            <div class="card-body">
+                <h2 id="deliveryHeading" class="h6 text-uppercase text-muted">Latest delivery details</h2>
+                @if (Model.LatestDelivery is { } delivery)
+                {
+                    <p class="mb-0" id="latest-delivery">
+                        @delivery.Name<br />
+                        <span style="white-space:pre-line">@delivery.Address</span><br />
+                        <span class="small">@delivery.MobileNumber</span>
+                    </p>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">No orders yet.</p>
+                }
+            </div>
+        </section>
+    </div>
+    <div class="col-md-4">
+        <section class="card h-100" aria-labelledby="activityHeading">
+            <div class="card-body">
+                <h2 id="activityHeading" class="h6 text-uppercase text-muted">Activity</h2>
+                <dl class="row small mb-0">
+                    <dt class="col-6">Orders</dt>
+                    <dd class="col-6" id="order-count">@Model.Orders.Count</dd>
+                    <dt class="col-6">Spent</dt>
+                    <dd class="col-6" id="total-spent">@Money.Format(Model.TotalSpent)</dd>
+                    <dt class="col-6">Reviews</dt>
+                    <dd class="col-6" id="review-count">@Model.ReviewCount</dd>
+                    <dt class="col-6">Wishlist</dt>
+                    <dd class="col-6" id="wishlist-count">@Model.WishlistCount @(Model.WishlistCount == 1 ? "book" : "books")</dd>
+                </dl>
+                <p class="small text-muted mt-2 mb-0">Spent counts paid orders that were not cancelled, returned or refunded.</p>
+            </div>
+        </section>
+    </div>
+</div>
+
+<h2 class="h5">Order history</h2>
+@if (Model.Orders.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle" id="customer-orders">
+            <thead>
+                <tr>
+                    <th scope="col">Order</th>
+                    <th scope="col">Date</th>
+                    <th scope="col" class="text-end">Items</th>
+                    <th scope="col" class="text-end">Total</th>
+                    <th scope="col">Payment</th>
+                    <th scope="col">Status</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td class="fw-semibold">#@order.Id</td>
+                        <td>@order.CreateDate.ToString("d MMM yyyy", culture)</td>
+                        <td class="text-end">@order.ItemCount</td>
+                        <td class="text-end">@Money.Format(order.Total)</td>
+                        <td>
+                            @order.PaymentMethod
+                            <span class="d-block small @(order.IsPaid ? "text-success" : "text-muted")">@(order.IsPaid ? "Paid" : "Not paid")</span>
+                        </td>
+                        <td><span class="badge @OrderStatusStyle.BadgeClass(order.StatusName)">@order.StatusName</span></td>
+                        <td class="text-end">
+                            <a asp-controller="AdminOperations" asp-action="OrderDetails" asp-route-id="@order.Id"
+                               class="btn btn-sm btn-outline-primary" aria-label="View order @order.Id">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <p class="border rounded p-3" id="no-orders">This customer hasn't placed any orders yet.</p>
+}

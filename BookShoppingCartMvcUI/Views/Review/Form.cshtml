@@ -1,0 +1,56 @@
+@model ReviewInputModel
+@{
+    bool isEdit = ViewData["IsEdit"] is true;
+    var bookName = ViewData["BookName"] as string;
+    ViewData["Title"] = isEdit ? "Edit your review" : "Write a review";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/Home/Index">Browse books</a></li>
+        <li class="breadcrumb-item"><a href="/Home/Details/@Model.BookId">@bookName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
+    </ol>
+</nav>
+
+<div class="confirmation">
+    <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+    <p class="text-muted">@bookName</p>
+
+    <form asp-action="@(isEdit ? "Edit" : "Create")" method="post" id="review-form">
+        <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+        <input type="hidden" asp-for="BookId" />
+
+        <fieldset class="mb-3">
+            <legend class="form-label fs-6 fw-semibold">Rating</legend>
+            @for (int stars = Review.MaxRating; stars >= Review.MinRating; stars--)
+            {
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" asp-for="Rating" value="@stars" id="rating-@stars" required />
+                    @* so it reads "5 stars" and not "5 black star" *@
+                    <label class="form-check-label" for="rating-@stars">@stars <span class="text-warning" aria-hidden="true">★</span><span class="visually-hidden">@(stars == 1 ? "star" : "stars")</span></label>
+                </div>
+            }
+            <div><span asp-validation-for="Rating" class="text-danger"></span></div>
+        </fieldset>
+
+        <div class="mb-3">
+            <label asp-for="Title" class="form-label fw-semibold">Title <span class="text-muted fw-normal">(optional)</span></label>
+            <input asp-for="Title" class="form-control" maxlength="@Review.TitleMaxLength" />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Comment" class="form-label fw-semibold">Review</label>
+            <textarea asp-for="Comment" class="form-control" rows="6" aria-describedby="commentHint"
+                      minlength="@Review.CommentMinLength" maxlength="@Review.CommentMaxLength" required></textarea>
+            <div class="form-text" id="commentHint">Between @Review.CommentMinLength and @Review.CommentMaxLength characters.</div>
+            <span asp-validation-for="Comment" class="text-danger"></span>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary">@(isEdit ? "Save changes" : "Post review")</button>
+            <a class="btn btn-outline-secondary" href="/Home/Details/@Model.BookId">Cancel</a>
+        </div>
+    </form>
+</div>

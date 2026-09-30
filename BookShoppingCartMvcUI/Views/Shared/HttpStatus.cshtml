@@ -1,0 +1,17 @@
+@model int
+@{
+    var (title, message) = Model switch
+    {
+        404 => ("Page not found", "The page or book you are looking for doesn't exist or is no longer available."),
+        400 => ("Invalid request", "Your request couldn't be processed. Please go back, refresh the page and try again."),
+        403 => ("Access denied", "You don't have permission to view this page."),
+        _ => ("Something went wrong", "Sorry, we couldn't complete your request. Please try again in a moment.")
+    };
+    ViewData["Title"] = title;
+}
+
+<div class="py-5 text-center" id="status-code-page" data-status="@Model">
+    <h1>@title</h1>
+    <p class="lead">@message</p>
+    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to the bookstore</a>
+</div>

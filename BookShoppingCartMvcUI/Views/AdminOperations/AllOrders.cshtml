@@ -1,0 +1,144 @@
+@model AdminOrdersPageModel
+@using System.Globalization
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Orders";
+    var culture = CultureInfo.InvariantCulture;
+    var payments = new Dictionary<string, string>
+    {
+        ["all"] = "Paid and unpaid",
+        ["paid"] = "Paid",
+        ["unpaid"] = "Not paid"
+    };
+    bool filtered = !string.IsNullOrEmpty(Model.Search) || Model.Status is not null || Model.Payment != "all";
+    // keep the filters when changing page/status
+    object PageRoute(int page) => new { search = Model.Search, status = Model.Status, payment = Model.Payment, pageNumber = page };
+    object StatusRoute(string? status) => new { search = Model.Search, status, payment = Model.Payment };
+}
+
+<h1 class="h3 mb-3">Orders</h1>
+
+<nav aria-label="Order status">
+    <ul class="nav nav-pills flex-wrap gap-1 mb-3" id="status-tabs">
+        <li class="nav-item">
+            <a class="nav-link @(Model.Status is null ? "active" : "")" href="@Url.Action("AllOrders", StatusRoute(null))"
+               aria-current="@(Model.Status is null ? "page" : null)">
+                All <span class="badge text-bg-light border ms-1">@Model.AllStatusesCount</span>
+            </a>
+        </li>
+        @foreach (var (status, count) in Model.StatusCounts)
+        {
+            bool current = Model.Status == status;
+            <li class="nav-item">
+                <a class="nav-link @(current ? "active" : "")" href="@Url.Action("AllOrders", StatusRoute(status))"
+                   aria-current="@(current ? "page" : null)" id="status-@status">
+                    @status <span class="badge @OrderStatusStyle.BadgeClass(status) ms-1">@count</span>
+                </a>
+            </li>
+        }
+    </ul>
+</nav>
+
+<form asp-action="AllOrders" method="get" class="row g-2 align-items-end mb-3" role="search" aria-label="Filter orders">
+    @if (Model.Status is not null)
+    {
+        <input type="hidden" name="status" value="@Model.Status" />
+    }
+    <div class="col-12 col-md-6">
+        <label for="search" class="form-label small mb-1">Order number, customer name, email or mobile</label>
+        <input type="search" id="search" name="search" value="@Model.Search" class="form-control" placeholder="Search orders" />
+    </div>
+    <div class="col-12 col-md-3">
+        <label for="payment" class="form-label small mb-1">Payment</label>
+        <select id="payment" name="payment" class="form-select">
+            @foreach (var (value, text) in payments)
+            {
+                <option value="@value" selected="@(value == Model.Payment)">@text</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-grow-1">Apply</button>
+        @if (filtered)
+        {
+            <a asp-action="AllOrders" class="btn btn-outline-secondary">Clear</a>
+        }
+    </div>
+</form>
+
+<p class="text-muted small" id="order-count" aria-live="polite">
+    @Model.TotalCount @(Model.TotalCount == 1 ? "order" : "orders")@(filtered ? " match" : "")
+</p>
+
+@if (Model.Orders.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle" id="orders">
+            <thead>
+                <tr>
+                    <th scope="col">Order</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Customer</th>
+                    <th scope="col" class="text-end">Items</th>
+                    <th scope="col" class="text-end">Total</th>
+                    <th scope="col">Payment</th>
+                    <th scope="col">Status</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td class="fw-semibold">#@order.Id</td>
+                        <td>@order.CreateDate.ToString("d MMM yyyy", culture)</td>
+                        <td>
+                            @order.Name
+                            <span class="d-block small text-muted">@order.Email</span>
+                        </td>
+                        <td class="text-end">@order.ItemCount</td>
+                        <td class="text-end">@Money.Format(order.Total)</td>
+                        <td>
+                            @order.PaymentMethod
+                            <span class="d-block small @(order.IsPaid ? "text-success" : "text-muted")">@(order.IsPaid ? "Paid" : "Not paid")</span>
+                        </td>
+                        <td><span class="badge @OrderStatusStyle.BadgeClass(order.StatusName)">@order.StatusName</span></td>
+                        <td class="text-end">
+                            <a asp-action="OrderDetails" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary"
+                               aria-label="View order @order.Id">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (Model.TotalCount > 0)
+{
+    <p>There are no orders on page @Model.PageNumber. <a href="@Url.Action("AllOrders", StatusRoute(Model.Status))">Go to the first page</a></p>
+}
+else if (filtered)
+{
+    <p class="border rounded p-3">No orders match these filters. <a asp-action="AllOrders">Show all orders</a></p>
+}
+else
+{
+    <p class="border rounded p-3">No orders yet.</p>
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Order pages">
+        <ul class="pagination flex-wrap">
+            <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("AllOrders", PageRoute(Model.PageNumber - 1))">Previous</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page @Model.PageNumber of @Model.TotalPages</span>
+            </li>
+            <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("AllOrders", PageRoute(Model.PageNumber + 1))">Next</a>
+            </li>
+        </ul>
+    </nav>
+}

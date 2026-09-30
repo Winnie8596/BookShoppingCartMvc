@@ -1,0 +1,20 @@
+@{
+    // the profile pages sit inside "My account", beside the same menu as orders, wishlist and reviews
+    Layout = "/Views/Shared/_AccountLayout.cshtml";
+    ViewData["AccountSection"] = "Settings";
+}
+
+<h1 class="h3 mb-3">Profile settings</h1>
+
+<div class="row g-3">
+    <div class="col-lg-3">
+        <partial name="_ManageNav" />
+    </div>
+    <div class="col-lg-9">
+        @RenderBody()
+    </div>
+</div>
+
+@section Scripts {
+    @RenderSection("Scripts", required: false)
+}

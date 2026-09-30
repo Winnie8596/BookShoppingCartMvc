@@ -1,0 +1,57 @@
+@model List<AdminGenreRowModel>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Genres";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Genres</h1>
+    <a asp-action="AddGenre" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add genre</a>
+</div>
+
+@if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle" id="admin-genres">
+            <thead>
+                <tr>
+                    <th scope="col">Genre</th>
+                    <th scope="col" class="text-end">Books</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var genre in Model)
+                {
+                    <tr>
+                        <td>@genre.GenreName</td>
+                        <td class="text-end">
+                            <a asp-controller="Book" asp-action="Index" asp-route-genreId="@genre.Id" aria-label="@genre.BookCount books in @genre.GenreName">@genre.BookCount</a>
+                        </td>
+                        <td class="text-nowrap">
+                            <a asp-action="UpdateGenre" asp-route-id="@genre.Id" class="btn btn-sm btn-outline-primary" aria-label="Rename @genre.GenreName">Rename</a>
+                            @if (genre.BookCount > 0)
+                            {
+                                @* server blocks this delete anyway, disabled so the admin can see why *@
+                                <span class="d-inline-block" tabindex="0" title="Move its books to another genre first.">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" disabled aria-label="@genre.GenreName has books and cannot be deleted">Delete</button>
+                                </span>
+                            }
+                            else
+                            {
+                                <form asp-action="DeleteGenre" asp-route-id="@genre.Id" method="post" class="d-inline"
+                                      onsubmit="return window.confirm('Delete this genre?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete @genre.GenreName">Delete</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <p class="border rounded p-3">There are no genres yet. <a asp-action="AddGenre">Add the first one</a></p>
+}

@@ -1,0 +1,440 @@
+/* extra styles on top of the Flatly bootswatch theme */
+
+/* ---- colours ----
+   flatly's teal/grey/red/blue/orange are too light on white (2.2-3.8:1), these darker ones pass WCAG AA (4.5:1)
+   teal #117a65 5.3, grey #5f6b6c 5.5, red #c0392b 5.4, blue #1f6fa8 5.4, amber #9a6100 5.1 */
+:root {
+    --bs-link-color: #117a65;
+    --bs-link-hover-color: #0b5345;
+}
+
+.text-muted { color: #5f6b6c !important; }
+.text-success { color: #117a65 !important; }
+.text-danger { color: #c0392b !important; }
+.text-info { color: #1f6fa8 !important; }
+/* only for the rating stars (they have text too), 3.7:1 is ok for graphics */
+.text-warning { color: #b9770e !important; }
+
+.form-text { color: #5f6b6c; }
+.invalid-feedback,
+.field-validation-error { color: #c0392b; }
+
+.text-bg-success { background-color: #117a65 !important; }
+.text-bg-secondary { background-color: #5f6b6c !important; }
+.text-bg-danger { background-color: #c0392b !important; }
+.text-bg-info { background-color: #1f6fa8 !important; }
+.text-bg-warning { color: #212529 !important; }   /* 7.0:1 */
+
+/* flatly alerts are white text on a solid colour */
+.alert-success { background-color: #117a65; }
+.alert-danger { background-color: #c0392b; }
+.alert-info { background-color: #1f6fa8; }
+.alert-warning { background-color: #9a6100; }
+
+.btn-success {
+    --bs-btn-bg: #117a65; --bs-btn-border-color: #117a65;
+    --bs-btn-hover-bg: #0b5345; --bs-btn-hover-border-color: #0b5345;
+    --bs-btn-active-bg: #0b5345; --bs-btn-active-border-color: #0b5345;
+    --bs-btn-disabled-bg: #117a65; --bs-btn-disabled-border-color: #117a65;
+}
+
+.btn-danger {
+    --bs-btn-bg: #c0392b; --bs-btn-border-color: #c0392b;
+    --bs-btn-hover-bg: #a93226; --bs-btn-hover-border-color: #a93226;
+    --bs-btn-active-bg: #922b21; --bs-btn-active-border-color: #922b21;
+    --bs-btn-disabled-bg: #c0392b; --bs-btn-disabled-border-color: #c0392b;
+}
+
+.btn-outline-danger {
+    --bs-btn-color: #c0392b; --bs-btn-border-color: #c0392b;
+    --bs-btn-hover-bg: #c0392b; --bs-btn-hover-border-color: #c0392b;
+    --bs-btn-active-bg: #a93226; --bs-btn-active-border-color: #a93226;
+    --bs-btn-disabled-color: #c0392b; --bs-btn-disabled-border-color: #c0392b;
+}
+
+.btn-secondary {
+    --bs-btn-bg: #5f6b6c; --bs-btn-border-color: #5f6b6c;
+    --bs-btn-hover-bg: #4d5758; --bs-btn-hover-border-color: #4d5758;
+    --bs-btn-active-bg: #4d5758; --bs-btn-active-border-color: #4d5758;
+    --bs-btn-disabled-bg: #5f6b6c; --bs-btn-disabled-border-color: #5f6b6c;
+}
+
+.btn-outline-secondary {
+    --bs-btn-color: #5f6b6c; --bs-btn-border-color: #5f6b6c;
+    --bs-btn-hover-bg: #5f6b6c; --bs-btn-hover-border-color: #5f6b6c;
+    --bs-btn-active-bg: #4d5758; --bs-btn-active-border-color: #4d5758;
+    --bs-btn-disabled-color: #5f6b6c; --bs-btn-disabled-border-color: #5f6b6c;
+}
+
+.pagination {
+    --bs-pagination-bg: #117a65;
+    --bs-pagination-hover-bg: #0b5345;
+    --bs-pagination-active-bg: #2c3e50;
+    --bs-pagination-disabled-color: #5f6b6c;
+    --bs-pagination-disabled-bg: #ecf0f1;
+}
+
+.breadcrumb {
+    --bs-breadcrumb-divider-color: #5f6b6c;
+    --bs-breadcrumb-item-active-color: #5f6b6c;
+}
+
+.dropdown-menu {
+    --bs-dropdown-link-color: #212529;
+    --bs-dropdown-header-color: #5f6b6c;
+}
+
+/* ---- focus ----
+   one clear outline for anything you can tab to, the default glow is too faint */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+[role="button"]:focus-visible,
+.form-check-input:focus-visible,
+.page-link:focus-visible {
+    outline: 3px solid #2c3e50;
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+/* white outline on coloured backgrounds */
+.alert :focus-visible,
+.toast :focus-visible,
+.nav-pills .nav-link.active:focus-visible {
+    outline-color: #fff;
+}
+
+.form-control:focus-visible,
+.form-select:focus-visible {
+    border-color: #2c3e50;
+    box-shadow: 0 0 0 .2rem rgba(44, 62, 80, .35);
+}
+
+/* skip link, only visible when focused */
+.skip-link:focus {
+    position: absolute;
+    top: .5rem;
+    left: .5rem;
+    z-index: 1080;
+    padding: .5rem 1rem;
+    background: #fff;
+    color: #2c3e50;
+    border-radius: .25rem;
+    box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .25);
+}
+
+/* skip target gets focus from js, don't outline the whole page */
+main:focus {
+    outline: none;
+}
+
+/* default focus ring is hard to see on the dark navbar */
+.navbar .nav-link:focus-visible,
+.navbar .navbar-brand:focus-visible,
+.navbar .btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    border-radius: .25rem;
+}
+
+/* stop long emails wrapping the navbar */
+#username {
+    display: inline-block;
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+.navbar-cart {
+    position: relative;
+    padding: .25rem .5rem;
+}
+
+.navbar-cart .badge {
+    position: absolute;
+    top: -.25rem;
+    right: -.5rem;
+    font-size: .7rem;
+}
+
+.site-footer a {
+    color: inherit;
+}
+
+.site-footer a:hover,
+.site-footer a:focus-visible {
+    color: #117a65;
+}
+
+/* ---- catalog ---- */
+
+.book-card {
+    transition: box-shadow .15s ease-in-out, transform .15s ease-in-out;
+}
+
+.book-card:hover,
+.book-card:focus-within {
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .12);
+    transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .book-card,
+    .book-card:hover,
+    .book-card:focus-within {
+        transition: none;
+        transform: none;
+    }
+}
+
+/* same size box for every cover */
+.book-cover {
+    display: block;
+    aspect-ratio: 2 / 3;
+    background: #ecf0f1;
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+    overflow: hidden;
+}
+
+.book-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.book-card .card-title {
+    font-size: 1rem;
+    margin-bottom: .25rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.book-title-link:hover,
+.book-title-link:focus-visible {
+    text-decoration: underline !important;
+}
+
+.book-price {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.filter-panel {
+    position: sticky;
+    top: 1rem;
+}
+
+.filter-chip {
+    background: #e8f6f3;
+    color: #117a65;
+    border: 1px solid #a3e4d7;
+    font-weight: 500;
+    font-size: .8rem;
+    padding: .55em .8em;   /* min 24px tall for tapping */
+}
+
+.filter-chip:hover,
+.filter-chip:focus-visible {
+    background: #d1f2eb;
+    color: #0b5345;
+}
+
+/* ---- book details ---- */
+
+.details-cover {
+    max-width: 320px;
+    aspect-ratio: 2 / 3;
+    background: #ecf0f1;
+    border-radius: .5rem;
+    overflow: hidden;
+    box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .15);
+}
+
+.details-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.details-price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1;
+}
+
+.purchase-box {
+    max-width: 32rem;
+}
+
+.qty-stepper {
+    width: 9rem;
+}
+
+/* -/+ buttons instead of the browser spinner */
+.qty-stepper input::-webkit-outer-spin-button,
+.qty-stepper input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.qty-stepper input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* ---- cart & checkout ---- */
+.cart-cover img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: .25rem;
+}
+
+.cart-line .qty-stepper {
+    width: 7.5rem;
+}
+
+/* sticky summary on wide screens */
+@media (min-width: 992px) {
+    .order-summary {
+        position: sticky;
+        top: 1rem;
+    }
+}
+
+.checkout-steps li + li::before {
+    content: "›";
+    margin-right: 1rem;
+    color: #5f6b6c;
+}
+
+.payment-option:has(input:checked) {
+    border-color: #2c3e50 !important;
+    background-color: #f8f9fa;
+}
+
+/* server side validation adds this class, style it like bootstrap */
+.input-validation-error {
+    border-color: #c0392b;
+}
+
+.input-validation-error:focus {
+    border-color: #c0392b;
+    box-shadow: 0 0 0 .25rem rgba(192, 57, 43, .3);
+}
+
+.confirmation {
+    max-width: 40rem;
+}
+
+/* ---- my account ---- */
+/* account menu scrolls sideways on phones instead of wrapping */
+@media (max-width: 767.98px) {
+    .account-nav .nav {
+        overflow-x: auto;
+        scrollbar-width: thin;
+        padding-bottom: .25rem;
+    }
+}
+
+.account-card:hover,
+.account-card:focus-visible {
+    border-color: #2c3e50;
+}
+
+.min-w-0 {
+    min-width: 0;
+}
+
+.wishlist-cover img,
+.review-cover img,
+.order-line-cover {
+    display: block;
+    width: 80px;
+    height: auto;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: .25rem;
+}
+
+.review-cover img {
+    width: 60px;
+}
+
+.order-line-cover {
+    width: 48px;
+}
+
+/* Pending -> Shipped -> Delivered, fill in the done steps */
+.order-track-step {
+    position: relative;
+    color: #5f6b6c;
+}
+
+.order-track-step::before {
+    content: "";
+    position: absolute;
+    top: .5rem;
+    left: -50%;
+    width: 100%;
+    height: 3px;
+    background: #dee2e6;
+    z-index: 0;
+}
+
+.order-track-step:first-child::before {
+    display: none;
+}
+
+.order-track-dot {
+    position: relative;
+    z-index: 1;
+    display: inline-block;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #dee2e6;
+}
+
+.order-track-step.done,
+.order-track-step.current {
+    color: #212529;
+}
+
+.order-track-step.done::before,
+.order-track-step.current::before {
+    background: #117a65;
+}
+
+.order-track-step.done .order-track-dot {
+    background: #117a65;
+    border-color: #117a65;
+}
+
+.order-track-step.current .order-track-dot {
+    border-color: #117a65;
+}
+
+.order-track-step.current {
+    font-weight: 600;
+}
+
+/* ---- book assistant ---- */
+.assistant {
+    max-width: 48rem;
+}
+
+/* the answer is plain text, keep the line breaks the model sends */
+.assistant-answer {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}

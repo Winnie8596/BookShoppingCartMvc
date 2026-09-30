@@ -1,0 +1,81 @@
+@model AccountDashboardModel
+@{
+    ViewData["Title"] = "My account";
+    ViewData["AccountSection"] = "Account";
+    Layout = "_AccountLayout";
+    string Count(int n, string one, string many) => n == 1 ? $"1 {one}" : $"{n} {many}";
+}
+
+<h1 class="h3 mb-1">My account</h1>
+<p class="text-muted">Signed in as <span id="account-email">@User.Identity?.Name</span></p>
+
+<section class="mb-4" aria-labelledby="recentOrdersHeading">
+    <div class="d-flex justify-content-between align-items-baseline">
+        <h2 id="recentOrdersHeading" class="h5">Recent orders</h2>
+        @if (Model.OrderCount > Model.RecentOrders.Count)
+        {
+            <a class="small" asp-controller="UserOrder" asp-action="UserOrders">See all @Model.OrderCount orders</a>
+        }
+    </div>
+    @if (Model.RecentOrders.Any())
+    {
+        <div class="list-group" id="recent-orders">
+            @foreach (var order in Model.RecentOrders)
+            {
+                <a class="list-group-item list-group-item-action d-flex flex-wrap justify-content-between align-items-center gap-2"
+                   asp-controller="UserOrder" asp-action="Details" asp-route-id="@order.Id">
+                    <span>
+                        <span class="fw-semibold">Order #@order.Id</span>
+                        <span class="text-muted small d-block">@order.CreateDate.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture) · @Count(order.ItemCount, "item", "items")</span>
+                    </span>
+                    <span class="d-flex align-items-center gap-3">
+                        <span class="badge @OrderStatusStyle.BadgeClass(order.StatusName)">@order.StatusName</span>
+                        <span class="fw-semibold">@Money.Format(order.Total)</span>
+                    </span>
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-state border rounded p-4 text-center">
+            <p class="mb-2">You haven't placed any orders yet.</p>
+            <a class="btn btn-primary btn-sm" asp-controller="Home" asp-action="Index">Browse books</a>
+        </div>
+    }
+</section>
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3" id="account-links">
+    <div class="col">
+        <a class="card h-100 text-decoration-none account-card" asp-controller="UserOrder" asp-action="UserOrders">
+            <div class="card-body">
+                <h2 class="h6 card-title"><i class="bi bi-box-seam" aria-hidden="true"></i> My orders</h2>
+                <p class="card-text text-muted small mb-0">@Count(Model.OrderCount, "order", "orders") · track and review them.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col">
+        <a class="card h-100 text-decoration-none account-card" asp-controller="Wishlist" asp-action="Index">
+            <div class="card-body">
+                <h2 class="h6 card-title"><i class="bi bi-heart" aria-hidden="true"></i> Wishlist</h2>
+                <p class="card-text text-muted small mb-0">@Count(Model.WishlistCount, "book", "books") saved for later.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col">
+        <a class="card h-100 text-decoration-none account-card" asp-controller="Account" asp-action="Reviews">
+            <div class="card-body">
+                <h2 class="h6 card-title"><i class="bi bi-star" aria-hidden="true"></i> My reviews</h2>
+                <p class="card-text text-muted small mb-0">@Count(Model.ReviewCount, "review", "reviews") written.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col">
+        <a class="card h-100 text-decoration-none account-card" asp-area="Identity" asp-page="/Account/Manage/Index">
+            <div class="card-body">
+                <h2 class="h6 card-title"><i class="bi bi-gear" aria-hidden="true"></i> Profile settings</h2>
+                <p class="card-text text-muted small mb-0">Phone number, email, password and personal data.</p>
+            </div>
+        </a>
+    </div>
+</div>

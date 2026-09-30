@@ -1,0 +1,129 @@
+@model AdminCustomersPageModel
+@using System.Globalization
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Customers";
+    var culture = CultureInfo.InvariantCulture;
+    var sorts = new Dictionary<string, string>
+    {
+        ["email"] = "Email (A-Z)",
+        ["recent"] = "Latest order first",
+        ["orders"] = "Most orders",
+        ["spent"] = "Most spent"
+    };
+    bool searched = !string.IsNullOrEmpty(Model.Search);
+    // keep search/sort when changing page
+    object PageRoute(int page) => new { search = Model.Search, sort = Model.Sort, pageNumber = page };
+}
+
+<h1 class="h3 mb-3">Customers</h1>
+
+<form asp-action="Index" method="get" class="row g-2 align-items-end mb-3" role="search" aria-label="Find customers">
+    <div class="col-12 col-md-6">
+        <label for="search" class="form-label small mb-1">Email, phone number or name on an order</label>
+        <input type="search" id="search" name="search" value="@Model.Search" class="form-control" placeholder="Search customers" />
+    </div>
+    <div class="col-12 col-md-3">
+        <label for="sort" class="form-label small mb-1">Sort by</label>
+        <select id="sort" name="sort" class="form-select">
+            @foreach (var (value, text) in sorts)
+            {
+                <option value="@value" selected="@(value == Model.Sort)">@text</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-grow-1">Apply</button>
+        @if (searched)
+        {
+            <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+        }
+    </div>
+</form>
+
+<p class="text-muted small" id="customer-count" aria-live="polite">
+    @Model.TotalCount @(Model.TotalCount == 1 ? "customer" : "customers")@(searched ? " match" : "")
+</p>
+
+@if (Model.Customers.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle" id="customers">
+            <thead>
+                <tr>
+                    <th scope="col">Customer</th>
+                    <th scope="col">Account</th>
+                    <th scope="col" class="text-end">Orders</th>
+                    <th scope="col">Last order</th>
+                    <th scope="col" class="text-end">Spent</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var customer in Model.Customers)
+                {
+                    <tr>
+                        <td>
+                            @customer.Email
+                            @if (!string.IsNullOrEmpty(customer.LatestOrderName))
+                            {
+                                <span class="d-block small text-muted">@customer.LatestOrderName</span>
+                            }
+                        </td>
+                        <td>
+                            @if (customer.IsLockedOut)
+                            {
+                                <span class="badge text-bg-danger">Locked out</span>
+                            }
+                            else if (!customer.EmailConfirmed)
+                            {
+                                <span class="badge text-bg-warning">Email not confirmed</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-success">Active</span>
+                            }
+                        </td>
+                        <td class="text-end">@customer.OrderCount</td>
+                        <td>@(customer.LastOrderDate?.ToString("d MMM yyyy", culture) ?? "Never")</td>
+                        <td class="text-end">@Money.Format(customer.TotalSpent)</td>
+                        <td class="text-end">
+                            <a asp-action="Details" asp-route-id="@customer.Id" class="btn btn-sm btn-outline-primary"
+                               aria-label="View customer @customer.Email">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="small text-muted">Spent counts paid orders that were not cancelled, returned or refunded.</p>
+}
+else if (Model.TotalCount > 0)
+{
+    <p>There are no customers on page @Model.PageNumber. <a href="@Url.Action("Index", PageRoute(1))">Go to the first page</a></p>
+}
+else if (searched)
+{
+    <p class="border rounded p-3">No customers match "@Model.Search". <a asp-action="Index">Show all customers</a></p>
+}
+else
+{
+    <p class="border rounded p-3">No customers have registered yet.</p>
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Customer pages">
+        <ul class="pagination flex-wrap">
+            <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", PageRoute(Model.PageNumber - 1))">Previous</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page @Model.PageNumber of @Model.TotalPages</span>
+            </li>
+            <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="@Url.Action("Index", PageRoute(Model.PageNumber + 1))">Next</a>
+            </li>
+        </ul>
+    </nav>
+}

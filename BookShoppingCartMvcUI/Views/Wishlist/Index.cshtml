@@ -1,0 +1,72 @@
+@model List<WishlistLineModel>
+@using System.Globalization
+@{
+    ViewData["Title"] = "My wishlist";
+    ViewData["AccountSection"] = "Wishlist";
+    Layout = "_AccountLayout";
+}
+
+<h1 class="h3 mb-3">My wishlist @if (Model.Any())
+    {
+        <small class="text-muted fs-6">(@(Model.Count == 1 ? "1 book" : $"{Model.Count} books"))</small>
+    }
+</h1>
+
+@if (Model.Any())
+{
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3 mb-3">
+        @foreach (var item in Model)
+        {
+            <div class="col">
+                <article class="card h-100 wishlist-item">
+                    <div class="card-body d-flex gap-3">
+                        <a asp-controller="Home" asp-action="Details" asp-route-id="@item.BookId" tabindex="-1" aria-hidden="true" class="wishlist-cover flex-shrink-0">
+                            <img src="/images/@(string.IsNullOrEmpty(item.Image) ? "NoImage.png" : item.Image)" alt="" width="80" height="120" loading="lazy" />
+                        </a>
+                        <div class="d-flex flex-column flex-grow-1 min-w-0">
+                            <h2 class="h6 mb-1"><a class="text-reset" asp-controller="Home" asp-action="Details" asp-route-id="@item.BookId">@item.BookName</a></h2>
+                            <p class="small text-muted mb-1">by @item.AuthorName</p>
+                            <p class="fw-bold mb-1 wishlist-price">@Money.Format(item.Price)</p>
+                            <p class="small mb-2">
+                                @if (item.InStock)
+                                {
+                                    <span class="text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> In stock</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> Out of stock</span>
+                                }
+                                <span class="text-muted d-block">Saved @item.CreatedAt.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</span>
+                            </p>
+                            <div class="d-flex flex-wrap gap-2 mt-auto">
+                                @if (item.InStock)
+                                {
+                                    <form asp-action="MoveToCart" method="post">
+                                        <input type="hidden" name="bookId" value="@item.BookId" />
+                                        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-cart-plus" aria-hidden="true"></i> Move to cart</button>
+                                    </form>
+                                }
+                                <form asp-action="Remove" method="post">
+                                    <input type="hidden" name="bookId" value="@item.BookId" />
+                                    <button type="submit" class="btn btn-sm btn-link text-danger px-0" aria-label="Remove @item.BookName from wishlist">
+                                        <i class="bi bi-trash" aria-hidden="true"></i> Remove
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        }
+    </div>
+    <a class="btn btn-link px-0" asp-controller="Home" asp-action="Index"><i class="bi bi-arrow-left" aria-hidden="true"></i> Continue shopping</a>
+}
+else
+{
+    <div class="empty-state text-center py-5" id="empty-wishlist">
+        <i class="bi bi-heart display-4 text-muted" aria-hidden="true"></i>
+        <h2 class="h5 mt-3">Your wishlist is empty</h2>
+        <p class="text-muted">Tap <strong>Add to wishlist</strong> on any book to save it for later.</p>
+        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Browse books</a>
+    </div>
+}

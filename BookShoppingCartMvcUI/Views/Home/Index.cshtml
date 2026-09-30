@@ -1,0 +1,309 @@
+@using System.Globalization
+@model BookDisplayModel
+@{
+    ViewData["Title"] = "Browse books";
+
+    var routeValues = new Dictionary<string, string>
+    {
+        ["sterm"] = Model.STerm,
+        ["genreId"] = Model.GenreId.ToString(),
+        ["minPrice"] = Model.MinPrice?.ToString() ?? "",
+        ["maxPrice"] = Model.MaxPrice?.ToString() ?? "",
+        ["inStockOnly"] = Model.InStockOnly.ToString(),
+        ["minRating"] = Model.MinRating?.ToString() ?? "",
+        ["sortBy"] = Model.SortBy
+    };
+
+    string PageUrl(int page) =>
+        Url.Action("Index", "Home", new RouteValueDictionary(new Dictionary<string, string>(routeValues) { ["pageNumber"] = page.ToString() }))!;
+
+    // url with one filter removed, back to page 1
+    string UrlWithout(params string[] keys)
+    {
+        var values = new Dictionary<string, string>(routeValues);
+        foreach (var key in keys)
+            values.Remove(key);
+        return Url.Action("Index", "Home", new RouteValueDictionary(values))!;
+    }
+
+    var chips = new List<(string Label, string RemoveUrl)>();
+    if (!string.IsNullOrWhiteSpace(Model.STerm))
+        chips.Add(($"“{Model.STerm}”", UrlWithout("sterm")));
+    if (Model.GenreId > 0 && Model.Genres.FirstOrDefault(g => g.Id == Model.GenreId) is { } genre)
+        chips.Add((genre.GenreName, UrlWithout("genreId")));
+    if (Model.MinPrice.HasValue && Model.MaxPrice.HasValue)
+        chips.Add(($"Price {Money.Format(Model.MinPrice.Value)} – {Money.Format(Model.MaxPrice.Value)}", UrlWithout("minPrice", "maxPrice")));
+    else if (Model.MinPrice.HasValue)
+        chips.Add(($"From {Money.Format(Model.MinPrice.Value)}", UrlWithout("minPrice")));
+    else if (Model.MaxPrice.HasValue)
+        chips.Add(($"Up to {Money.Format(Model.MaxPrice.Value)}", UrlWithout("maxPrice")));
+    if (Model.MinRating.HasValue)
+        chips.Add(($"{Model.MinRating} ★ & up", UrlWithout("minRating")));
+    if (Model.InStockOnly)
+        chips.Add(("In stock", UrlWithout("inStockOnly")));
+
+    bool hasFilters = chips.Count > 0 || Model.GenreId > 0;
+    int firstShown = (Model.PageNumber - 1) * Model.PageSize + 1;
+    int lastShown = firstShown + Model.Books.Count() - 1;
+
+    // page numbers near the current one + first and last
+    int around = Math.Min(Model.PageNumber, Model.TotalPages);   // pageNumber comes from the url so it could be anything
+    var pages = Enumerable.Range(around - 2, 5)
+        .Append(1).Append(Model.TotalPages)
+        .Where(p => p >= 1 && p <= Model.TotalPages)
+        .Distinct().Order().ToList();
+}
+
+<h1 class="h3 mb-3">Browse books</h1>
+
+<form asp-action="Index" method="get" id="catalogForm" role="search" aria-label="Search and filter books">
+    <div class="row g-2 align-items-end mb-3">
+        <div class="col-12 col-md">
+            <label class="form-label small fw-semibold" for="sterm">Search</label>
+            <div class="input-group">
+                <span class="input-group-text bg-white" aria-hidden="true"><i class="bi bi-search"></i></span>
+                <input type="search" class="form-control" value="@Model.STerm" id="sterm" name="sterm" placeholder="Title or author" autocomplete="off">
+                <button type="submit" class="btn btn-primary" data-loading-text="Searching…">Search</button>
+            </div>
+        </div>
+        <div class="col-8 col-md-auto">
+            <label class="form-label small fw-semibold" for="sortBy">Sort by</label>
+            <select class="form-select" id="sortBy" name="sortBy">
+                <option value="relevance" selected="@(Model.SortBy == "relevance")">Relevance</option>
+                <option value="price_asc" selected="@(Model.SortBy == "price_asc")">Price: Low to High</option>
+                <option value="price_desc" selected="@(Model.SortBy == "price_desc")">Price: High to Low</option>
+                <option value="newest" selected="@(Model.SortBy == "newest")">Newest</option>
+                <option value="title_asc" selected="@(Model.SortBy == "title_asc")">Title: A to Z</option>
+                <option value="title_desc" selected="@(Model.SortBy == "title_desc")">Title: Z to A</option>
+                <option value="rating_desc" selected="@(Model.SortBy == "rating_desc")">Highest rated</option>
+                <option value="reviews_desc" selected="@(Model.SortBy == "reviews_desc")">Most reviewed</option>
+            </select>
+        </div>
+        <div class="col-4 d-lg-none">
+            <button class="btn btn-outline-primary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filters" aria-expanded="false" aria-controls="filters">
+                <i class="bi bi-funnel" aria-hidden="true"></i> Filters@(hasFilters ? $" ({chips.Count})" : "")
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <aside class="col-lg-3">
+            <div class="collapse d-lg-block" id="filters">
+                <div class="card card-body filter-panel">
+                    <h2 class="h6 text-uppercase fw-bold mb-3">Filters</h2>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold" for="genreId">Genre</label>
+                        <select class="form-select form-select-sm" id="genreId" name="genreId">
+                            <option value="0">All genres</option>
+                            @foreach (var g in Model.Genres)
+                            {
+                                <option selected="@(g.Id == Model.GenreId)" value="@g.Id">@g.GenreName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <fieldset class="mb-3">
+                        <legend class="form-label small fw-semibold mb-2">Price (RM)</legend>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="visually-hidden" for="minPrice">Minimum price</label>
+                                <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control form-control-sm" value="@Model.MinPrice" id="minPrice" name="minPrice" placeholder="Min">
+                            </div>
+                            <div class="col-6">
+                                <label class="visually-hidden" for="maxPrice">Maximum price</label>
+                                <input type="number" step="0.01" min="0" inputmode="decimal" class="form-control form-control-sm" value="@Model.MaxPrice" id="maxPrice" name="maxPrice" placeholder="Max">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold" for="minRating">Rating</label>
+                        <select class="form-select form-select-sm" id="minRating" name="minRating">
+                            <option value="" selected="@(Model.MinRating is null)">Any rating</option>
+                            @for (int stars = 4; stars >= 1; stars--)
+                            {
+                                <option value="@stars" selected="@(Model.MinRating == stars)">@stars ★ &amp; up</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="inStockOnly" name="inStockOnly" value="true" checked="@Model.InStockOnly">
+                        <label class="form-check-label" for="inStockOnly">In stock only</label>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm" data-loading-text="Applying…">Apply filters</button>
+                        @if (hasFilters)
+                        {
+                            <a asp-action="Index" class="btn btn-link btn-sm">Clear all</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <section class="col-lg-9" aria-labelledby="results-heading">
+            <h2 id="results-heading" class="visually-hidden">Results</h2>
+
+            @if (hasFilters)
+            {
+                <ul class="list-inline mb-3" aria-label="Active filters">
+                    @foreach (var chip in chips)
+                    {
+                        <li class="list-inline-item mb-1">
+                            <a class="badge rounded-pill filter-chip text-decoration-none" href="@chip.RemoveUrl">
+                                @chip.Label <i class="bi bi-x" aria-hidden="true"></i><span class="visually-hidden">(remove filter)</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+
+            @if (!Model.Books.Any())
+            {
+                <div class="empty-state text-center py-5">
+                    <i class="bi bi-search display-4 text-muted" aria-hidden="true"></i>
+                    @if (Model.TotalCount > 0)
+                    {
+                        <h3 class="h5 mt-3">There are no results on page @Model.PageNumber.</h3>
+                        <p class="text-muted">The search only has @Model.TotalPages page(s).</p>
+                    }
+                    else if (hasFilters)
+                    {
+                        <h3 class="h5 mt-3">No books match your search or filters.</h3>
+                        <p class="text-muted">Check the spelling, or remove a filter above to see more books.</p>
+                    }
+                    else
+                    {
+                        <h3 class="h5 mt-3">No books are available right now.</h3>
+                        <p class="text-muted">Please check back soon.</p>
+                    }
+                    <a asp-action="Index" class="btn btn-primary">View full catalog</a>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted small mb-2">Showing @if (firstShown == lastShown) { @firstShown } else { <text>@firstShown–@lastShown</text> } of @Model.TotalCount @(Model.TotalCount == 1 ? "book" : "books")</p>
+
+                <div class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">
+                    @foreach (var book in Model.Books)
+                    {
+                        <div class="col">
+                            <partial name="_BookCard" model="book" />
+                        </div>
+                    }
+                </div>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <nav aria-label="Book catalog pages" class="mt-4">
+                        <ul class="pagination justify-content-center flex-wrap">
+                            <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                                @if (Model.PageNumber <= 1)
+                                {
+                                    <span class="page-link">Previous</span>
+                                }
+                                else
+                                {
+                                    <a class="page-link" href="@PageUrl(Model.PageNumber - 1)">Previous</a>
+                                }
+                            </li>
+                            @for (int i = 0; i < pages.Count; i++)
+                            {
+                                if (i > 0 && pages[i] > pages[i - 1] + 1)
+                                {
+                                    <li class="page-item disabled d-none d-sm-block"><span class="page-link">…</span></li>
+                                }
+                                var p = pages[i];
+                                bool current = p == Model.PageNumber;
+                                <li class="page-item @(current ? "active" : "d-none d-sm-block")" aria-current="@(current ? "page" : null)">
+                                    <a class="page-link" href="@PageUrl(p)" aria-label="Page @p">@p</a>
+                                </li>
+                            }
+                            <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                                @if (Model.PageNumber >= Model.TotalPages)
+                                {
+                                    <span class="page-link">Next</span>
+                                }
+                                else
+                                {
+                                    <a class="page-link" href="@PageUrl(Model.PageNumber + 1)">Next</a>
+                                }
+                            </li>
+                        </ul>
+                        <p class="text-center text-muted small">Page @Model.PageNumber of @Model.TotalPages</p>
+                    </nav>
+                }
+            }
+        </section>
+    </div>
+</form>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="cartToast" class="toast align-items-center border-0" role="status" aria-live="polite" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="cartMessage"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+@section Scripts{
+    <script>
+        // sort applies straight away, the other filters wait for "Apply filters"
+        document.getElementById("sortBy").addEventListener("change", e => e.target.form.requestSubmit());
+
+        // show loading while the next page loads
+        document.getElementById("catalogForm").addEventListener("submit", e => {
+            var button = e.submitter;
+            if (button && button.dataset.loadingText) {
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> ' + button.dataset.loadingText;
+            }
+        });
+
+        async function add(bookId) {
+            if (document.getElementById("username") == null) {
+                window.location.href = "/Identity/Account/Login?returnUrl=" + encodeURIComponent(location.pathname + location.search);
+                return;
+            }
+            var button = document.querySelector(`button[data-book-id="${bookId}"]`);
+            var original = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Adding…';
+            try {
+                var response = await fetch(`/Cart/AddItem?bookId=${bookId}`);
+                if (response.status == 200) {
+                    document.getElementById("cartCount").textContent = await response.json();
+                    showCartMessage("Added to your cart.", true);
+                }
+                else if (response.status == 400) {
+                    var error = await response.json();
+                    showCartMessage(error.message, false);
+                }
+                else {
+                    showCartMessage("Could not add the book to your cart. Please try again.", false);
+                }
+            }
+            catch (err) {
+                console.log(err);
+                showCartMessage("Could not add the book to your cart. Please check your connection and try again.", false);
+            }
+            finally {
+                button.disabled = false;
+                button.innerHTML = original;
+            }
+        }
+
+        // textContent not innerHTML, the message comes from the server
+        function showCartMessage(text, succeeded) {
+            var toast = document.getElementById("cartToast");
+            toast.classList.remove("text-bg-success", "text-bg-danger");
+            toast.classList.add(succeeded ? "text-bg-success" : "text-bg-danger");
+            document.getElementById("cartMessage").textContent = text;
+            bootstrap.Toast.getOrCreateInstance(toast).show();
+        }
+    </script>
+}

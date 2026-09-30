@@ -1,0 +1,26 @@
+@* My account menu - scrolling row of pills on mobile, a column on bigger screens.
+   model = current section name *@
+@model string
+@{
+    var items = new (string Key, string Icon, string Label, string Href)[]
+    {
+        ("Account", "bi-person", "My account", Url.Action("Index", "Account", new { area = "" })!),
+        ("Orders", "bi-box-seam", "My orders", Url.Action("UserOrders", "UserOrder", new { area = "" })!),
+        ("Wishlist", "bi-heart", "Wishlist", Url.Action("Index", "Wishlist", new { area = "" })!),
+        ("Reviews", "bi-star", "My reviews", Url.Action("Reviews", "Account", new { area = "" })!),
+        ("Settings", "bi-gear", "Profile settings", Url.Page("/Account/Manage/Index", new { area = "Identity" })!),
+    };
+}
+<nav aria-label="My account" class="account-nav mb-3">
+    <ul class="nav nav-pills flex-nowrap flex-md-column">
+        @foreach (var item in items)
+        {
+            bool current = item.Key == Model;
+            <li class="nav-item">
+                <a class="nav-link text-nowrap @(current ? "active" : "")" aria-current="@(current ? "page" : null)" href="@item.Href">
+                    <i class="bi @item.Icon" aria-hidden="true"></i> @item.Label
+                </a>
+            </li>
+        }
+    </ul>
+</nav>

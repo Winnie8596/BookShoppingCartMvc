@@ -1,0 +1,49 @@
+@model List<OrderSummaryModel>
+@using System.Globalization
+@{
+    ViewData["Title"] = "My orders";
+    ViewData["AccountSection"] = "Orders";
+    Layout = "_AccountLayout";
+}
+
+<h1 class="h3 mb-3">My orders</h1>
+
+@if (Model.Any())
+{
+    <ul class="list-unstyled" aria-label="Your orders, newest first">
+        @foreach (var order in Model)
+        {
+            <li class="card mb-3 order-row">
+                <div class="card-body">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-6 col-md-3">
+                            <h2 class="h6 mb-0">Order #@order.Id</h2>
+                            <span class="small text-muted">@order.CreateDate.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</span>
+                        </div>
+                        <div class="col-6 col-md-2 text-end text-md-start">
+                            <span class="badge order-status @OrderStatusStyle.BadgeClass(order.StatusName)">@order.StatusName</span>
+                        </div>
+                        <div class="col-6 col-md-3 small">
+                            @(order.ItemCount == 1 ? "1 item" : $"{order.ItemCount} items") ·
+                            <span class="text-muted">@order.PaymentMethod | @(order.IsPaid ? "Paid" : "Not paid")</span>
+                        </div>
+                        <div class="col-6 col-md-2 text-end text-md-start fw-semibold order-total">@Money.Format(order.Total)</div>
+                        <div class="col-12 col-md-2 d-grid d-md-block text-md-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@order.Id"
+                               aria-label="View details of order #@order.Id">View details</a>
+                        </div>
+                    </div>
+                </div>
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <div class="empty-state text-center py-5" id="no-orders">
+        <i class="bi bi-box-seam display-4 text-muted" aria-hidden="true"></i>
+        <h2 class="h5 mt-3">You haven't placed any orders yet.</h2>
+        <p class="text-muted">Books you buy will appear here, so you can track them.</p>
+        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Browse books</a>
+    </div>
+}

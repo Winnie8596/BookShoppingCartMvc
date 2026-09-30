@@ -1,0 +1,56 @@
+@using System.Globalization
+@model Book
+@*
+    book card for the catalog grid (with Add to cart) and related books on the details page (Compact).
+    Add to cart calls add(bookId), which is defined on the catalog page
+*@
+@{
+    bool compact = ViewData["Compact"] as bool? ?? false;
+    var book = Model;
+    var detailsUrl = Url.Action("Details", "Home", new { id = book.Id });
+}
+<article class="card h-100 book-card">
+    <a href="@detailsUrl" tabindex="-1" aria-hidden="true" class="book-cover">
+        <img src="/images/@(string.IsNullOrEmpty(book.Image) ? "NoImage.png" : book.Image)" alt="" loading="lazy" width="200" height="300">
+    </a>
+    <div class="card-body d-flex flex-column p-2 p-sm-3">
+        @* h3 because the sections above use h2 *@
+        <h3 class="card-title"><a href="@detailsUrl" class="text-reset text-decoration-none book-title-link">@book.BookName</a></h3>
+        <p class="small text-muted mb-1">by @book.AuthorName</p>
+        @if (!compact)
+        {
+            <p class="small mb-1"><span class="badge bg-light text-dark border">@book.GenreName</span></p>
+        }
+        @if (book.AverageRating is double rating)
+        {
+            <p class="book-rating small mb-2"><span class="text-warning" aria-hidden="true">★</span> @rating.ToString("0.0", CultureInfo.InvariantCulture)<span class="visually-hidden"> out of 5</span> <span class="text-muted">(@(book.ReviewCount == 1 ? "1 review" : $"{book.ReviewCount} reviews"))</span></p>
+        }
+        else
+        {
+            <p class="book-rating small text-muted mb-2">No reviews yet</p>
+        }
+
+        <div class="mt-auto">
+            <p class="book-price mb-2">@Money.Format(book.Price)</p>
+            @if (compact)
+            {
+                <p class="small mb-0 @(book.Quantity > 0 ? "text-success" : "text-danger")">@(book.Quantity > 0 ? "In stock" : "Out of stock")</p>
+            }
+            else if (book.Quantity > 0)
+            {
+                @if (book.Quantity <= 3)
+                {
+                    <p class="small text-danger mb-1">Only @book.Quantity left</p>
+                }
+                @* otherwise screen readers just hear "Add to cart" 12 times *@
+                <button type="button" onclick="add(@book.Id)" data-book-id="@book.Id" class="btn btn-primary btn-sm w-100" aria-label="Add to cart: @book.BookName">
+                    <i class="bi bi-cart-plus" aria-hidden="true"></i> Add to cart
+                </button>
+            }
+            else
+            {
+                <span class="btn btn-sm w-100 btn-outline-secondary disabled" aria-disabled="true">Out of stock</span>
+            }
+        </div>
+    </div>
+</article>

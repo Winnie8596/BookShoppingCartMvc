@@ -1,0 +1,55 @@
+@model StockManageModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Manage stock";
+}
+
+<div class="col-12 col-lg-9 col-xl-7">
+    <a asp-action="Index" class="small"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to inventory</a>
+    <h1 class="h3 mt-2 mb-1">Manage stock</h1>
+    <p class="mb-3">
+        <span class="fw-semibold">@Model.BookName</span>
+        <span class="text-muted">by @Model.AuthorName</span>
+    </p>
+
+    <p class="fs-5" id="current-stock">
+        In stock now: <span class="fw-semibold">@Model.CurrentQuantity</span>
+        <span class="badge @StockLevel.BadgeClass(Model.CurrentQuantity)">@StockLevel.Status(Model.CurrentQuantity)</span>
+    </p>
+
+    <div class="row g-3">
+        <section class="col-12 col-md-6" aria-labelledby="adjustHeading">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 id="adjustHeading" class="h5">Receive or remove copies</h2>
+                    <p class="small text-muted">Adds to or takes from the current count, so sales made meanwhile are kept. Use a minus sign to remove, e.g. -2 for damaged copies.</p>
+                    <form asp-action="AdjustStock" method="post" id="adjust-form">
+                        <input type="hidden" asp-for="BookId" id="adjust-BookId" />
+                        <label asp-for="Change" class="form-label"></label>
+                        <input asp-for="Change" type="number" class="form-control" step="1"
+                               min="-@StockLevel.MaxQuantity" max="@StockLevel.MaxQuantity" required />
+                        <span asp-validation-for="Change" class="text-danger small"></span>
+                        <button type="submit" class="btn btn-primary mt-3">Apply change</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="col-12 col-md-6" aria-labelledby="setHeading">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 id="setHeading" class="h5">Set exact count</h2>
+                    <p class="small text-muted">For a stocktake. If the stock changes before you save, you are asked to check the new count first.</p>
+                    <form asp-action="ManangeStock" method="post" id="set-form">
+                        <input type="hidden" asp-for="BookId" id="set-BookId" />
+                        <input type="hidden" asp-for="ExpectedQuantity" />
+                        <label asp-for="Quantity" class="form-label"></label>
+                        <input asp-for="Quantity" type="number" class="form-control" step="1" min="0" max="@StockLevel.MaxQuantity" required />
+                        <span asp-validation-for="Quantity" class="text-danger small"></span>
+                        <button type="submit" class="btn btn-outline-primary mt-3">Save count</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

@@ -1,0 +1,276 @@
+@using System.Globalization
+@model BookDetailsModel
+@inject IWishlistRepository Wishlist
+@{
+    var book = Model.Book;
+    var reviews = Model.Reviews;
+    var summary = reviews.Summary;
+    bool signedIn = User.Identity?.IsAuthenticated == true;
+    var loginUrl = $"/Identity/Account/Login?ReturnUrl=%2FHome%2FDetails%2F{book.Id}";
+    ViewData["Title"] = book.BookName;
+    string Stars(int rating) => new string('★', rating) + new string('☆', Review.MaxRating - rating);
+    string Average(double value) => value.ToString("0.0", CultureInfo.InvariantCulture);
+    string ReviewCount(int count) => count == 1 ? "1 review" : $"{count} reviews";
+}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Browse books</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" asp-route-genreId="@book.GenreId">@book.GenreName</a></li>
+        <li class="breadcrumb-item active text-truncate" aria-current="page">@book.BookName</li>
+    </ol>
+</nav>
+
+<div class="row g-4">
+    <div class="col-12 col-md-5 col-lg-4">
+        <div class="details-cover mx-auto">
+            <img src="/images/@(string.IsNullOrEmpty(book.Image) ? "NoImage.png" : book.Image)"
+                 alt="@(string.IsNullOrEmpty(book.Image) ? "No cover available" : $"Cover of {book.BookName}")" width="400" height="600">
+        </div>
+    </div>
+
+    <div class="col-12 col-md-7 col-lg-8">
+        <h1 class="book-title h2 mb-1">@book.BookName</h1>
+        <p class="text-muted mb-2">by @book.AuthorName</p>
+
+        <p class="mb-3" id="rating-summary">
+            @if (summary.AverageRating is double average)
+            {
+                <span class="text-warning" aria-hidden="true">@Stars((int)Math.Round(average, MidpointRounding.AwayFromZero))</span>
+                <a href="#reviews"><strong>@Average(average) / 5</strong> · @ReviewCount(summary.ReviewCount)</a>
+            }
+            else
+            {
+                <span class="text-muted">No reviews yet</span>
+            }
+        </p>
+
+        <p class="details-price mb-3">@Money.Format(book.Price)</p>
+
+        <div class="card purchase-box mb-4">
+            <div class="card-body">
+                <p class="mb-3" id="availability">
+                    @if (book.Quantity > 0)
+                    {
+                        <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
+                        <span class="text-success fw-semibold">In stock (@book.Quantity available)</span>
+                        @if (book.Quantity <= 3)
+                        {
+                            <span class="d-block small text-danger">Only @book.Quantity left - order soon.</span>
+                        }
+                    }
+                    else
+                    {
+                        <i class="bi bi-x-circle-fill text-danger" aria-hidden="true"></i>
+                        <span class="text-danger fw-semibold">Out of stock</span>
+                        <span class="d-block small text-muted">Save it to your wishlist and check back later.</span>
+                    }
+                </p>
+
+                @if (book.Quantity > 0)
+                {
+                    @if (signedIn)
+                    {
+                        <form asp-controller="Cart" asp-action="AddFromDetails" method="post" id="addToCartForm" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+                            <input type="hidden" name="bookId" value="@book.Id" />
+                            <div>
+                                <label for="qty" class="form-label small fw-semibold">Quantity</label>
+                                <div class="input-group qty-stepper">
+                                    <button type="button" class="btn btn-outline-secondary" data-step="-1" aria-controls="qty" aria-label="Decrease quantity"><i class="bi bi-dash" aria-hidden="true"></i></button>
+                                    <input type="number" id="qty" name="qty" class="form-control text-center" inputmode="numeric"
+                                           value="1" min="1" max="@book.Quantity" required />
+                                    <button type="button" class="btn btn-outline-secondary" data-step="1" aria-controls="qty" aria-label="Increase quantity"><i class="bi bi-plus" aria-hidden="true"></i></button>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg flex-grow-1 flex-sm-grow-0">
+                                <i class="bi bi-cart-plus" aria-hidden="true"></i> Add to cart
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a class="btn btn-primary btn-lg d-block d-sm-inline-block mb-3" href="@loginUrl">Log in to add to cart</a>
+                    }
+                }
+
+                @* out of stock books can still go on the wishlist *@
+                <div id="wishlist-action">
+                    @if (signedIn)
+                    {
+                        var returnUrl = $"/Home/Details/{book.Id}";
+                        if (await Wishlist.Contains(book.Id))
+                        {
+                            <form asp-controller="Wishlist" asp-action="Remove" method="post" class="d-flex flex-wrap gap-2 align-items-center">
+                                <input type="hidden" name="bookId" value="@book.Id" />
+                                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                <span class="text-success"><i class="bi bi-heart-fill" aria-hidden="true"></i> In your wishlist</span>
+                                <button type="submit" class="btn btn-sm btn-link text-danger">Remove from wishlist</button>
+                            </form>
+                        }
+                        else
+                        {
+                            @* main button when it can't be bought, secondary when it can *@
+                            <form asp-controller="Wishlist" asp-action="Add" method="post">
+                                <input type="hidden" name="bookId" value="@book.Id" />
+                                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                <button type="submit" class="btn @(book.Quantity > 0 ? "btn-outline-secondary" : "btn-primary")"><i class="bi bi-heart" aria-hidden="true"></i> Add to wishlist</button>
+                            </form>
+                        }
+                    }
+                    else
+                    {
+                        <a class="btn btn-outline-secondary" href="@loginUrl">Log in to save to wishlist</a>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <h2 class="h6 text-uppercase fw-bold">Details</h2>
+        <dl class="row small mb-0">
+            <dt class="col-sm-3">Author</dt>
+            <dd class="col-sm-9">@book.AuthorName</dd>
+            <dt class="col-sm-3">Genre</dt>
+            <dd class="col-sm-9">@book.GenreName</dd>
+        </dl>
+    </div>
+</div>
+
+<section class="mt-5 pt-4 border-top" id="reviews" aria-labelledby="reviewsHeading">
+    <h2 id="reviewsHeading" class="h4 mb-3">Customer reviews</h2>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            @if (summary.AverageRating is double avg)
+            {
+                <p class="fs-4 mb-0"><span aria-hidden="true" class="text-warning">@Stars((int)Math.Round(avg, MidpointRounding.AwayFromZero))</span> @Average(avg) / 5</p>
+                <p class="text-muted">@ReviewCount(summary.ReviewCount)</p>
+                <table class="table table-sm table-borderless mb-0" aria-label="Rating distribution">
+                    @for (int stars = Review.MaxRating; stars >= Review.MinRating; stars--)
+                    {
+                        int count = summary.CountFor(stars);
+                        int percent = (int)Math.Round(100.0 * count / summary.ReviewCount);
+                        <tr class="rating-bar">
+                            <td class="text-nowrap">@stars star</td>
+                            <td class="w-100 align-middle">
+                                <div class="progress" role="progressbar" aria-label="@stars star" aria-valuenow="@percent" aria-valuemin="0" aria-valuemax="100">
+                                    <div class="progress-bar bg-warning" style="width:@percent%"></div>
+                                </div>
+                            </td>
+                            <td class="text-end" data-stars="@stars">@count</td>
+                        </tr>
+                    }
+                </table>
+            }
+            else
+            {
+                <p class="text-muted">No reviews yet.</p>
+            }
+
+            <div class="mt-3" id="review-action">
+                @if (!reviews.IsSignedIn)
+                {
+                    <a class="btn btn-outline-primary" href="@loginUrl">Log in to write a review</a>
+                }
+                else if (reviews.HasReviewed)
+                {
+                    <a class="btn btn-outline-primary" asp-controller="Review" asp-action="Edit" asp-route-bookId="@book.Id">Edit your review</a>
+                }
+                else if (reviews.CanWriteReview)
+                {
+                    <a class="btn btn-primary" asp-controller="Review" asp-action="Create" asp-route-bookId="@book.Id">Write a review</a>
+                }
+                else
+                {
+                    <p class="text-muted small">Only customers who bought this book can review it.</p>
+                }
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            @if (!reviews.Reviews.Any())
+            {
+                <p class="text-muted">Be the first to share what you think of this book.</p>
+            }
+            @foreach (var review in reviews.Reviews)
+            {
+                <article class="border-bottom pb-3 mb-3 review">
+                    <div>
+                        <span class="text-warning" role="img" aria-label="@review.Rating out of 5 stars">@Stars(review.Rating)</span>
+                        @if (!string.IsNullOrEmpty(review.Title))
+                        {
+                            <strong class="ms-1 review-title">@review.Title</strong>
+                        }
+                    </div>
+                    <div class="small text-muted">
+                        <span class="review-author">@review.ReviewerName</span>
+                        · @review.CreatedAt.ToString("d MMM yyyy", CultureInfo.InvariantCulture)
+                        @if (review.UpdatedAt.HasValue)
+                        {
+                            <span>(edited)</span>
+                        }
+                        @if (review.IsVerifiedPurchase)
+                        {
+                            <span class="badge text-bg-success ms-1">Verified Purchase</span>
+                        }
+                    </div>
+                    <p class="mt-2 mb-1 review-comment" style="white-space:pre-line">@review.Comment</p>
+                    @if (review.IsMine)
+                    {
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Review" asp-action="Edit" asp-route-bookId="@book.Id" aria-label="Edit your review">Edit</a>
+                            <form asp-controller="Review" asp-action="Delete" method="post" onsubmit="return confirm('Delete your review?');">
+                                <input type="hidden" name="bookId" value="@book.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete your review">Delete</button>
+                            </form>
+                        </div>
+                    }
+                </article>
+            }
+        </div>
+    </div>
+</section>
+
+@if (Model.RelatedBooks.Any())
+{
+    <section class="mt-5 pt-4 border-top" aria-labelledby="relatedBooksHeading">
+        <h2 id="relatedBooksHeading" class="h4 mb-3">Related books</h2>
+        <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-5 g-3">
+            @foreach (var related in Model.RelatedBooks)
+            {
+                <div class="col related-book">
+                    <partial name="_BookCard" model="related" view-data="@(new ViewDataDictionary(ViewData) { ["Compact"] = true })" />
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@section Scripts{
+    <script>
+        // -/+ buttons, typing still works and the server checks stock anyway
+        (function () {
+            var qty = document.getElementById("qty");
+            if (!qty) return;
+            var min = Number(qty.min), max = Number(qty.max);
+            var down = document.querySelector('.qty-stepper [data-step="-1"]');
+            var up = document.querySelector('.qty-stepper [data-step="1"]');
+            function sync() {
+                down.disabled = Number(qty.value) <= min;
+                up.disabled = Number(qty.value) >= max;
+            }
+            [down, up].forEach(b => b.addEventListener("click", () => {
+                var next = (Number(qty.value) || min) + Number(b.dataset.step);
+                qty.value = Math.min(max, Math.max(min, next));
+                sync();
+            }));
+            qty.addEventListener("input", sync);
+            sync();
+
+            document.getElementById("addToCartForm").addEventListener("submit", e => {
+                var button = e.submitter;
+                if (button && qty.checkValidity()) {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Adding…';
+                }
+            });
+        })();
+    </script>
+}
