@@ -3,7 +3,7 @@ namespace BookShoppingCartMvcUI.Shared;
 public interface IFileService
 {
     void DeleteFile(string fileName);
-    Task<string> SaveFile(IFormFile file, string[] allowedExtensions);
+    Task<string> SaveFile(IFormFile file, IReadOnlyList<string> allowedExtensions);
 }
 
 public class FileService : IFileService
@@ -14,7 +14,7 @@ public class FileService : IFileService
         _environment = environment;
     }
 
-    public async Task<string> SaveFile(IFormFile file, string[] allowedExtensions)
+    public async Task<string> SaveFile(IFormFile file, IReadOnlyList<string> allowedExtensions)
     {
         var wwwPath = _environment.WebRootPath;
         var path = Path.Combine(wwwPath, "images");
@@ -26,6 +26,10 @@ public class FileService : IFileService
         if (!allowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException($"Only {string.Join(",", allowedExtensions)} files allowed");
+        }
+        if (!ImageSignature.Matches(file))
+        {
+            throw new InvalidOperationException("The file is not a real image.");
         }
         string fileName = $"{Guid.NewGuid()}{extension}";
         string fileNameWithPath = Path.Combine(path, fileName);

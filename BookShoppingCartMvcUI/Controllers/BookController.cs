@@ -10,7 +10,7 @@ namespace BookShoppingCartMvcUI.Controllers;
 public class BookController : Controller
 {
     public const long MaxImageBytes = 1 * 1024 * 1024;
-    public static readonly string[] AllowedImageExtensions = [".jpeg", ".jpg", ".png"];
+    public static readonly IReadOnlyList<string> AllowedImageExtensions = [".jpeg", ".jpg", ".png"];
 
     private readonly IBookRepository _bookRepo;
     private readonly IGenreRepository _genreRepo;
@@ -79,7 +79,7 @@ public class BookController : Controller
         var book = await _bookRepo.GetBookById(id);
         if (book == null)
         {
-            TempData["errorMessage"] = $"Book with the id: {id} does not found";
+            TempData["errorMessage"] = $"No book with id {id} was found.";
             return RedirectToAction(nameof(Index));
         }
         return View(new BookDTO
@@ -100,7 +100,7 @@ public class BookController : Controller
         var book = await _bookRepo.GetBookById(bookToUpdate.Id);
         if (book == null)
         {
-            TempData["errorMessage"] = $"Book with the id: {bookToUpdate.Id} does not found";
+            TempData["errorMessage"] = $"No book with id {bookToUpdate.Id} was found.";
             return RedirectToAction(nameof(Index));
         }
         // take the image from the db, not the form - otherwise someone could edit the field and delete another file
@@ -151,7 +151,7 @@ public class BookController : Controller
         var book = await _bookRepo.GetBookById(id);
         if (book == null)
         {
-            TempData["errorMessage"] = $"Book with the id: {id} does not found";
+            TempData["errorMessage"] = $"No book with id {id} was found.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -195,6 +195,8 @@ public class BookController : Controller
                 ModelState.AddModelError(nameof(BookDTO.ImageFile), "The image cannot be larger than 1 MB.");
             else if (book.ImageFile.Length == 0)
                 ModelState.AddModelError(nameof(BookDTO.ImageFile), "The image file is empty.");
+            else if (!ImageSignature.Matches(book.ImageFile))
+                ModelState.AddModelError(nameof(BookDTO.ImageFile), "That file isn't a valid JPEG or PNG image.");
         }
     }
 

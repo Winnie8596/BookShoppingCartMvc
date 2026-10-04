@@ -70,7 +70,7 @@
     @Model.TotalCount @(Model.TotalCount == 1 ? "order" : "orders")@(filtered ? " match" : "")
 </p>
 
-@if (Model.Orders.Any())
+@if (Model.Items.Any())
 {
     <div class="table-responsive">
         <table class="table table-striped align-middle" id="orders">
@@ -87,7 +87,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var order in Model.Orders)
+                @foreach (var order in Model.Items)
                 {
                     <tr>
                         <td class="fw-semibold">#@order.Id</td>

@@ -4,7 +4,7 @@
     ViewData["Title"] = $"Order #{Model.Id}";
     ViewData["AccountSection"] = "Orders";
     Layout = "_AccountLayout";
-    int trackStep = Array.IndexOf(OrderStatusStyle.Track, Model.StatusName);
+    int trackStep = OrderStatusStyle.TrackStep(Model.StatusName);
 }
 
 <nav aria-label="breadcrumb">
@@ -27,7 +27,7 @@
 @if (trackStep >= 0)
 {
     <ol class="order-track list-unstyled d-flex mb-4" aria-label="Order progress">
-        @for (int i = 0; i < OrderStatusStyle.Track.Length; i++)
+        @for (int i = 0; i < OrderStatusStyle.Track.Count; i++)
         {
             var state = i < trackStep ? "done" : i == trackStep ? "current" : "todo";
             <li class="order-track-step flex-fill text-center small @state" aria-current="@(state == "current" ? "step" : null)">

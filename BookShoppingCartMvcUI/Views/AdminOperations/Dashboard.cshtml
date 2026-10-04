@@ -126,7 +126,7 @@
                     @foreach (var item in Model.LowStockBooks)
                     {
                         <tr>
-                            <td><a asp-controller="Stock" asp-action="ManangeStock" asp-route-bookId="@item.BookId">@item.BookName</a></td>
+                            <td><a asp-controller="Stock" asp-action="ManageStock" asp-route-bookId="@item.BookId">@item.BookName</a></td>
                             <td class="text-end">@item.Quantity</td>
                             <td><span class="badge @StockLevel.BadgeClass(item.Quantity)">@StockLevel.Status(item.Quantity)</span></td>
                         </tr>

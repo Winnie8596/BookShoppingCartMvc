@@ -1,6 +1,6 @@
-using BookShoppingCartMvcUI;
 using BookShoppingCartMvcUI.Ai;
 using BookShoppingCartMvcUI.Shared;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +23,9 @@ builder.Services
 // require the antiforgery token on every POST (admin ones too)
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute()));
+// repositories get the logged in user from this instead of HttpContext
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 //register repositories.service
 builder.Services.AddTransient<IHomeRepository, HomeRepository>();
 builder.Services.AddTransient<ICartRepository, CartRepository>();
@@ -38,7 +41,25 @@ builder.Services.AddTransient<IDashboardRepository, DashboardRepository>();
 builder.Services.AddTransient<ICustomerRepository, CustomerRepository>();
 builder.Services.AddAiServices(builder.Configuration);
 
+// in docker the keys live on a volume, otherwise every restart logs everyone out
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrEmpty(keysPath))
+{
+    // relative paths go under the app folder, under iis the working dir is somewhere else
+    var keysDir = Path.Combine(builder.Environment.ContentRootPath, keysPath);
+    builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keysDir));
+}
+
 var app = builder.Build();
+
+// "dotnet BookShoppingCartMvcUI.dll --migrate" just updates the database and exits, the deploy runs it before starting the site
+if (args.Contains("--migrate"))
+{
+    using var migrateScope = app.Services.CreateScope();
+    await migrateScope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
+    return;
+}
+
 //insert initial data into the database
 using (var scope = app.Services.CreateScope())
 {
@@ -64,6 +85,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 // only the book assistant has a limit, see AddAiServices
 app.UseRateLimiter();

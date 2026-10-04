@@ -20,7 +20,7 @@ public class BookDTO
     public string? AuthorName { get; set; }
 
     [Range(0.01, MaxPrice, ErrorMessage = "The price must be between RM0.01 and RM100,000.")]
-    public double Price { get; set; }
+    public decimal Price { get; set; }
 
     // just for showing the current cover, the saved value always comes from the db
     public string? Image { get; set; }

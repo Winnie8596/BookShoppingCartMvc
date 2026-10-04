@@ -5,7 +5,7 @@ public class AdminBookQuery
 {
     public const int DefaultPageSize = 20;
     public const int MaxPageSize = 100;
-    public static readonly string[] Sorts = { "newest", "title", "price", "price_desc", "stock" };
+    public static readonly IReadOnlyList<string> Sorts = ["newest", "title", "price", "price_desc", "stock"];
 
     // title or author
     public string? Search { get; set; }
@@ -16,16 +16,13 @@ public class AdminBookQuery
 }
 
 // one page of books + the filters used (so the page can keep them)
-public class AdminBookListModel
+public class AdminBookListModel : PagedResult<AdminBookRowModel>
 {
-    public List<AdminBookRowModel> Books { get; set; } = new();
+    public AdminBookListModel() : base(AdminBookQuery.DefaultPageSize) { }
+
     public string? Search { get; set; }
     public int? GenreId { get; set; }
     public string Sort { get; set; } = "newest";
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = AdminBookQuery.DefaultPageSize;
-    public int TotalCount { get; set; }
-    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 0;
     public List<Genre> Genres { get; set; } = new();
 }
 
@@ -36,7 +33,7 @@ public class AdminBookRowModel
     public string? BookName { get; set; }
     public string? AuthorName { get; set; }
     public string? GenreName { get; set; }
-    public double Price { get; set; }
+    public decimal Price { get; set; }
     public string? Image { get; set; }
     // 0 if there's no Stock row
     public int Quantity { get; set; }

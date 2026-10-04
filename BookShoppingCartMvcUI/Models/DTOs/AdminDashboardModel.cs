@@ -12,7 +12,7 @@ public class AdminDashboardModel
     // all non-deleted orders, any status
     public int TotalOrders { get; set; }
     // paid orders that weren't cancelled/returned/refunded
-    public double TotalRevenue { get; set; }
+    public decimal TotalRevenue { get; set; }
     // books at or below the low stock threshold (incl. out of stock)
     public int LowStockCount { get; set; }
 
@@ -24,4 +24,4 @@ public class AdminDashboardModel
 
 public record StatusCountModel(string? StatusName, int Count);
 
-public record AdminRecentOrderModel(int Id, DateTime CreateDate, string? Name, string? StatusName, bool IsPaid, double Total);
+public record AdminRecentOrderModel(int Id, DateTime CreateDate, string? Name, string? StatusName, bool IsPaid, decimal Total);

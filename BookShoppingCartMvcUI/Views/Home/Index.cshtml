@@ -44,7 +44,7 @@
 
     bool hasFilters = chips.Count > 0 || Model.GenreId > 0;
     int firstShown = (Model.PageNumber - 1) * Model.PageSize + 1;
-    int lastShown = firstShown + Model.Books.Count() - 1;
+    int lastShown = firstShown + Model.Items.Count - 1;
 
     // page numbers near the current one + first and last
     int around = Math.Min(Model.PageNumber, Model.TotalPages);   // pageNumber comes from the url so it could be anything
@@ -161,7 +161,7 @@
                 </ul>
             }
 
-            @if (!Model.Books.Any())
+            @if (!Model.Items.Any())
             {
                 <div class="empty-state text-center py-5">
                     <i class="bi bi-search display-4 text-muted" aria-hidden="true"></i>
@@ -188,7 +188,7 @@
                 <p class="text-muted small mb-2">Showing @if (firstShown == lastShown) { @firstShown } else { <text>@firstShown–@lastShown</text> } of @Model.TotalCount @(Model.TotalCount == 1 ? "book" : "books")</p>
 
                 <div class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">
-                    @foreach (var book in Model.Books)
+                    @foreach (var book in Model.Items)
                     {
                         <div class="col">
                             <partial name="_BookCard" model="book" />
@@ -241,6 +241,9 @@
     </div>
 </form>
 
+@* token for the ajax add to cart, the catalog form above is a GET so it has none *@
+<div id="cartToken" hidden>@Html.AntiForgeryToken()</div>
+
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
     <div id="cartToast" class="toast align-items-center border-0" role="status" aria-live="polite" aria-atomic="true">
         <div class="d-flex">
@@ -274,12 +277,18 @@
             button.disabled = true;
             button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Adding…';
             try {
-                var response = await fetch(`/Cart/AddItem?bookId=${bookId}`);
+                var token = document.querySelector('#cartToken input[name="__RequestVerificationToken"]').value;
+                var response = await fetch("/Cart/AddItem", {
+                    method: "POST",
+                    body: new URLSearchParams({ bookId: bookId, __RequestVerificationToken: token })
+                });
+                var isJson = (response.headers.get("content-type") || "").includes("application/json");
                 if (response.status == 200) {
                     document.getElementById("cartCount").textContent = await response.json();
                     showCartMessage("Added to your cart.", true);
                 }
-                else if (response.status == 400) {
+                // a 400 without json is a bad or expired token, not a stock problem
+                else if (response.status == 400 && isJson) {
                     var error = await response.json();
                     showCartMessage(error.message, false);
                 }

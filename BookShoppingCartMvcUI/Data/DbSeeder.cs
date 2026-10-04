@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using BookShoppingCartMvcUI.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookShoppingCartMvcUI.Data;
@@ -7,166 +8,170 @@ public class DbSeeder
 {
     public static async Task SeedDefaultData(IServiceProvider service)
     {
+        var logger = service.GetRequiredService<ILogger<DbSeeder>>();
         try
         {
-            var context = service.GetService<ApplicationDbContext>();
+            var context = service.GetRequiredService<ApplicationDbContext>();
+            var config = service.GetRequiredService<IConfiguration>();
 
-            // this block will check if there are any pending migrations and apply them
-            if ((await context.Database.GetPendingMigrationsAsync()).Count() > 0)
+            // apply pending migrations, unless the deploy already did it with --migrate
+            var migrateOnStartup = config.GetValue("Database:MigrateOnStartup", true);
+            if (migrateOnStartup && (await context.Database.GetPendingMigrationsAsync()).Any())
             {
                 await context.Database.MigrateAsync();
             }
 
-            var userMgr = service.GetService<UserManager<IdentityUser>>();
-            var roleMgr = service.GetService<RoleManager<IdentityRole>>();
+            var userMgr = service.GetRequiredService<UserManager<IdentityUser>>();
+            var roleMgr = service.GetRequiredService<RoleManager<IdentityRole>>();
 
-            // create admin role if not exists
-            var adminRoleExists = await roleMgr.RoleExistsAsync(Roles.Admin.ToString());
-
-            if (!adminRoleExists)
+            foreach (var role in new[] { Roles.Admin.ToString(), Roles.User.ToString() })
             {
-                await roleMgr.CreateAsync(new IdentityRole(Roles.Admin.ToString()));
+                if (!await roleMgr.RoleExistsAsync(role))
+                {
+                    EnsureSucceeded(await roleMgr.CreateAsync(new IdentityRole(role)), $"create the {role} role");
+                }
             }
 
-            // create user role if not exists
-            var userRoleExists = await roleMgr.RoleExistsAsync(Roles.User.ToString());
+            await SeedAdminAsync(userMgr, config);
+            await SeedGenresAsync(context);
 
-            if (!userRoleExists)
-            {
-                await roleMgr.CreateAsync(new IdentityRole(Roles.User.ToString()));
-            }
-
-            // create admin user
-
-            var admin = new IdentityUser
-            {
-                UserName = "admin@gmail.com",
-                Email = "admin@gmail.com",
-                EmailConfirmed = true
-            };
-
-            var userInDb = await userMgr.FindByEmailAsync(admin.Email);
-            if (userInDb is null)
-            {
-                await userMgr.CreateAsync(admin, "Admin@123");
-                await userMgr.AddToRoleAsync(admin, Roles.Admin.ToString());
-            }
-
-
-            if (!context.Genres.Any())
-            {
-                await SeedGenreAsync(context);
-            }
-
-            if (!context.Books.Any())
+            if (!await context.Books.AnyAsync())
             {
                 await SeedBooksAsync(context);
-                // update stock table
-                await context.Database.ExecuteSqlRawAsync(@"
-                     INSERT INTO Stock(BookId,Quantity) 
-                     SELECT 
-                     b.Id,
-                     10 
-                     FROM Book b
-                     WHERE NOT EXISTS (
-                     SELECT * FROM [Stock]
-                     );
-           ");
             }
 
-            if (!context.orderStatuses.Any())
+            if (!await context.OrderStatuses.AnyAsync())
             {
                 await SeedOrderStatusAsync(context);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            // don't start the site on a half seeded database
+            logger.LogError(ex, "Seeding the database failed");
+            throw;
         }
     }
 
     #region private methods
 
-    private static async Task SeedGenreAsync(ApplicationDbContext context)
+    // Seed:AdminEmail is in appsettings.json. Seed:AdminPassword comes from appsettings.Development.json locally
+    // and from the environment (or appsettings.Production.json) in production
+    private static async Task SeedAdminAsync(UserManager<IdentityUser> userMgr, IConfiguration config)
     {
-        var genres = new[]
-         {
-            new Genre { GenreName = "Romance" },
-            new Genre { GenreName = "Action" },
-            new Genre { GenreName = "Thriller" },
-            new Genre { GenreName = "Crime" },
-            new Genre { GenreName = "SelfHelp" },
-            new Genre { GenreName = "Programming" }
-        };
+        var email = config["Seed:AdminEmail"];
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new InvalidOperationException("Seed:AdminEmail is not set.");
+        }
 
-        await context.Genres.AddRangeAsync(genres);
+        if (await userMgr.FindByEmailAsync(email) is not null)
+        {
+            return;
+        }
+
+        var password = config["Seed:AdminPassword"];
+        if (string.IsNullOrEmpty(password))
+        {
+            throw new InvalidOperationException("Seed:AdminPassword is not set, it's needed to create the admin account.");
+        }
+
+        var admin = new IdentityUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true
+        };
+        EnsureSucceeded(await userMgr.CreateAsync(admin, password), "create the admin user");
+        EnsureSucceeded(await userMgr.AddToRoleAsync(admin, Roles.Admin.ToString()), "add the admin user to the Admin role");
+    }
+
+    private static void EnsureSucceeded(IdentityResult result, string action)
+    {
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(" ", result.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"Couldn't {action}: {errors}");
+        }
+    }
+
+    private static readonly string[] GenreNames = { "Romance", "Action", "Thriller", "Crime", "SelfHelp", "Programming" };
+
+    // only adds the genres that are missing, so it's safe on an existing database
+    private static async Task SeedGenresAsync(ApplicationDbContext context)
+    {
+        var existing = await context.Genres.Select(g => g.GenreName).ToListAsync();
+        var missing = GenreNames.Except(existing, StringComparer.OrdinalIgnoreCase).ToList();
+        if (missing.Count == 0)
+        {
+            return;
+        }
+
+        context.Genres.AddRange(missing.Select(name => new Genre { GenreName = name }));
         await context.SaveChangesAsync();
     }
 
     private static async Task SeedOrderStatusAsync(ApplicationDbContext context)
     {
-        var orderStatuses = new[]
-        {
-            new OrderStatus { StatusId = 1, StatusName = "Pending" },
-            new OrderStatus { StatusId = 2, StatusName = "Shipped" },
-            new OrderStatus { StatusId = 3, StatusName = "Delivered" },
-            new OrderStatus { StatusId = 4, StatusName = "Cancelled" },
-            new OrderStatus { StatusId = 5, StatusName = "Returned" },
-            new OrderStatus { StatusId = 6, StatusName = "Refund" }
-        };
+        var orderStatuses = OrderWorkflow.Statuses.Select(name => new OrderStatus { StatusName = name });
 
-        await context.orderStatuses.AddRangeAsync(orderStatuses);
+        context.OrderStatuses.AddRange(orderStatuses);
         await context.SaveChangesAsync();
     }
 
     private static async Task SeedBooksAsync(ApplicationDbContext context)
     {
-        var books = new List<Book>
+        // genre ids depend on insert order, so look them up by name
+        var genreIds = await context.Genres.ToDictionaryAsync(g => g.GenreName, g => g.Id, StringComparer.OrdinalIgnoreCase);
+
+        var books = new (string Genre, string Title, string Author, decimal Price)[]
         {
-            // Romance Books (GenreId = 1)
-            new Book { BookName = "Pride and Prejudice", AuthorName = "Jane Austen", Price = 12.99, GenreId = 1 },
-            new Book { BookName = "The Notebook", AuthorName = "Nicholas Sparks", Price = 11.99, GenreId = 1 },
-            new Book { BookName = "Outlander", AuthorName = "Diana Gabaldon", Price = 14.99, GenreId = 1 },
-            new Book { BookName = "Me Before You", AuthorName = "Jojo Moyes", Price = 10.99, GenreId = 1 },
-            new Book { BookName = "The Fault in Our Stars", AuthorName = "John Green", Price = 9.99, GenreId = 1 },
-            
-            // Action Books (GenreId = 2)
-            new Book { BookName = "The Bourne Identity", AuthorName = "Robert Ludlum", Price = 14.99, GenreId = 2 },
-            new Book { BookName = "Die Hard", AuthorName = "Roderick Thorp", Price = 13.99, GenreId = 2 },
-            new Book { BookName = "Jurassic Park", AuthorName = "Michael Crichton", Price = 15.99, GenreId = 2 },
-            new Book { BookName = "The Da Vinci Code", AuthorName = "Dan Brown", Price = 12.99, GenreId = 2 },
-            new Book { BookName = "The Hunger Games", AuthorName = "Suzanne Collins", Price = 11.99, GenreId = 2 },
-            
-            // Thriller Books (GenreId = 3)
-            new Book { BookName = "Gone Girl", AuthorName = "Gillian Flynn", Price = 11.99, GenreId = 3 },
-            new Book { BookName = "The Girl with the Dragon Tattoo", AuthorName = "Stieg Larsson", Price = 10.99, GenreId = 3 },
-            new Book { BookName = "The Silence of the Lambs", AuthorName = "Thomas Harris", Price = 12.99, GenreId = 3 },
-            new Book { BookName = "Before I Go to Sleep", AuthorName = "S.J. Watson", Price = 9.99, GenreId = 3 },
-            new Book { BookName = "The Girl on the Train", AuthorName = "Paula Hawkins", Price = 13.99, GenreId = 3 },
-            
-            // Crime Books (GenreId = 4)
-            new Book { BookName = "The Godfather", AuthorName = "Mario Puzo", Price = 13.99, GenreId = 4 },
-            new Book { BookName = "The Girl with the Dragon Tattoo", AuthorName = "Stieg Larsson", Price = 12.99, GenreId = 4 },
-            new Book { BookName = "The Cuckoo's Calling", AuthorName = "Robert Galbraith", Price = 14.99, GenreId = 4 },
-            new Book { BookName = "In Cold Blood", AuthorName = "Truman Capote", Price = 11.99, GenreId = 4 },
-            new Book { BookName = "The Silence of the Lambs", AuthorName = "Thomas Harris", Price = 15.99, GenreId = 4 },
-            
-            // SelfHelp Books (GenreId = 5)
-            new Book { BookName = "The 7 Habits of Highly Effective People", AuthorName = "Stephen R. Covey", Price = 9.99, GenreId = 5 },
-            new Book { BookName = "How to Win Friends and Influence People", AuthorName = "Dale Carnegie", Price = 8.99, GenreId = 5 },
-            new Book { BookName = "Atomic Habits", AuthorName = "James Clear", Price = 10.99, GenreId = 5 },
-            new Book { BookName = "The Subtle Art of Not Giving a F*ck", AuthorName = "Mark Manson", Price = 7.99, GenreId = 5 },
-            new Book { BookName = "You Are a Badass", AuthorName = "Jen Sincero", Price = 11.99, GenreId = 5 },
-            
-            // Programming Books (GenreId = 6)
-            new Book { BookName = "Clean Code", AuthorName = "Robert C. Martin", Price = 19.99, GenreId = 6 },
-            new Book { BookName = "Design Patterns", AuthorName = "Erich Gamma", Price = 17.99, GenreId = 6 },
-            new Book { BookName = "Code Complete", AuthorName = "Steve McConnell", Price = 21.99, GenreId = 6 },
-            new Book { BookName = "The Pragmatic Programmer", AuthorName = "Andrew Hunt", Price = 18.99, GenreId = 6 },
-            new Book { BookName = "Head First Design Patterns", AuthorName = "Eric Freeman", Price = 20.99, GenreId = 6 }
+            ("Romance", "Pride and Prejudice", "Jane Austen", 12.99m),
+            ("Romance", "The Notebook", "Nicholas Sparks", 11.99m),
+            ("Romance", "Outlander", "Diana Gabaldon", 14.99m),
+            ("Romance", "Me Before You", "Jojo Moyes", 10.99m),
+            ("Romance", "The Fault in Our Stars", "John Green", 9.99m),
+
+            ("Action", "The Bourne Identity", "Robert Ludlum", 14.99m),
+            ("Action", "Die Hard", "Roderick Thorp", 13.99m),
+            ("Action", "Jurassic Park", "Michael Crichton", 15.99m),
+            ("Action", "The Da Vinci Code", "Dan Brown", 12.99m),
+            ("Action", "The Hunger Games", "Suzanne Collins", 11.99m),
+
+            ("Thriller", "Gone Girl", "Gillian Flynn", 11.99m),
+            ("Thriller", "The Girl with the Dragon Tattoo", "Stieg Larsson", 10.99m),
+            ("Thriller", "The Silence of the Lambs", "Thomas Harris", 12.99m),
+            ("Thriller", "Before I Go to Sleep", "S.J. Watson", 9.99m),
+            ("Thriller", "The Girl on the Train", "Paula Hawkins", 13.99m),
+
+            ("Crime", "The Godfather", "Mario Puzo", 13.99m),
+            ("Crime", "The Girl with the Dragon Tattoo", "Stieg Larsson", 12.99m),
+            ("Crime", "The Cuckoo's Calling", "Robert Galbraith", 14.99m),
+            ("Crime", "In Cold Blood", "Truman Capote", 11.99m),
+            ("Crime", "The Silence of the Lambs", "Thomas Harris", 15.99m),
+
+            ("SelfHelp", "The 7 Habits of Highly Effective People", "Stephen R. Covey", 9.99m),
+            ("SelfHelp", "How to Win Friends and Influence People", "Dale Carnegie", 8.99m),
+            ("SelfHelp", "Atomic Habits", "James Clear", 10.99m),
+            ("SelfHelp", "The Subtle Art of Not Giving a F*ck", "Mark Manson", 7.99m),
+            ("SelfHelp", "You Are a Badass", "Jen Sincero", 11.99m),
+
+            ("Programming", "Clean Code", "Robert C. Martin", 19.99m),
+            ("Programming", "Design Patterns", "Erich Gamma", 17.99m),
+            ("Programming", "Code Complete", "Steve McConnell", 21.99m),
+            ("Programming", "The Pragmatic Programmer", "Andrew Hunt", 18.99m),
+            ("Programming", "Head First Design Patterns", "Eric Freeman", 20.99m)
         };
 
-        await context.Books.AddRangeAsync(books);
+        // every seeded book starts with 10 in stock
+        context.Books.AddRange(books.Select(b => new Book
+        {
+            BookName = b.Title,
+            AuthorName = b.Author,
+            Price = b.Price,
+            GenreId = genreIds[b.Genre],
+            Stock = new Stock { Quantity = 10 }
+        }));
         await context.SaveChangesAsync();
     }
 

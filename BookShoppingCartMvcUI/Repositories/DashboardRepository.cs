@@ -5,9 +5,6 @@ namespace BookShoppingCartMvcUI.Repositories;
 
 public class DashboardRepository : IDashboardRepository
 {
-    // these aren't sales, so they don't count as revenue even if paid
-    public static readonly string[] NonRevenueStatuses = { "Cancelled", "Returned", "Refund" };
-
     private readonly ApplicationDbContext _db;
 
     public DashboardRepository(ApplicationDbContext db)
@@ -18,7 +15,7 @@ public class DashboardRepository : IDashboardRepository
     public async Task<AdminDashboardModel> GetDashboard()
     {
         // all the numbers are calculated in the db, only the short lists come back as rows
-        var orders = _db.Orders.Where(o => !o.IsDeleted);
+        IQueryable<Order> orders = _db.Orders;
 
         // no Stock row = 0
         var stock = _db.Books.Select(b => new StockDisplayModel
@@ -42,9 +39,9 @@ public class DashboardRepository : IDashboardRepository
             TotalOrders = await orders.CountAsync(),
             // Sum of no rows is NULL, hence the cast
             TotalRevenue = await _db.OrderDetails
-                .Where(od => !od.Order.IsDeleted && od.Order.IsPaid
-                    && !NonRevenueStatuses.Contains(od.Order.OrderStatus.StatusName))
-                .SumAsync(od => (double?)(od.UnitPrice * od.Quantity)) ?? 0,
+                .Where(od => od.Order.IsPaid
+                    && !OrderWorkflow.NotSold.Contains(od.Order.OrderStatus.StatusName))
+                .SumAsync(od => (decimal?)(od.UnitPrice * od.Quantity)) ?? 0,
             LowStockCount = await lowStock.CountAsync(),
             OrdersByStatus = await orders
                 .GroupBy(o => o.OrderStatus.StatusName)
@@ -62,9 +59,4 @@ public class DashboardRepository : IDashboardRepository
                 .ToListAsync()
         };
     }
-}
-
-public interface IDashboardRepository
-{
-    Task<AdminDashboardModel> GetDashboard();
 }

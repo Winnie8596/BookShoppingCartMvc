@@ -40,7 +40,7 @@
                 <div class="card-body">
                     <h2 id="setHeading" class="h5">Set exact count</h2>
                     <p class="small text-muted">For a stocktake. If the stock changes before you save, you are asked to check the new count first.</p>
-                    <form asp-action="ManangeStock" method="post" id="set-form">
+                    <form asp-action="ManageStock" method="post" id="set-form">
                         <input type="hidden" asp-for="BookId" id="set-BookId" />
                         <input type="hidden" asp-for="ExpectedQuantity" />
                         <label asp-for="Quantity" class="form-label"></label>

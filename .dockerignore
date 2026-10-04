@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+BookShoppingCartMvcUI.Tests/
+*.zip
+screenshots/
+.git/
+.env
+**/appsettings.Production.json

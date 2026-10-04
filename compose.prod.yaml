@@ -1,0 +1,74 @@
+# production setup for a linux server: sql server + the app + caddy for https
+# usage: cp .env.example .env, fill it in, then
+#   docker compose -f compose.prod.yaml up -d --build
+services:
+  db:
+    image: "mcr.microsoft.com/mssql/server:2025-latest"
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=y
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+    volumes:
+      - sql-server-data:/var/opt/mssql
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # runs the ef migrations once and exits, web only starts after it succeeds
+  migrate:
+    build: .
+    image: book-shopping-cart-mvc:latest
+    command: [ "--migrate" ]
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=BookShoppingCartMvc;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: book-shopping-cart-mvc:latest
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      # caddy sits in front, so trust its X-Forwarded-* headers (https scheme, real client ip)
+      - ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+      - AllowedHosts=${ALLOWED_HOSTS:-$DOMAIN}
+      - Database__MigrateOnStartup=false
+      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=BookShoppingCartMvc;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True
+      - Seed__AdminEmail=${ADMIN_EMAIL:-admin@gmail.com}
+      - Seed__AdminPassword=${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      - DataProtection__KeysPath=/app/keys
+      - Gemini__ApiKey=${GEMINI_API_KEY:-}
+    volumes:
+      # uploaded book covers and login cookie keys survive rebuilds
+      - book-images:/app/wwwroot/images
+      - dp-keys:/app/keys
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - DOMAIN=${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+
+volumes:
+  sql-server-data:
+  book-images:
+  dp-keys:
+  caddy-data:
+  caddy-config:

@@ -7,7 +7,7 @@
     <h1 class="h2 mt-3">We couldn't place your order</h1>
     <p class="lead">
         No order was created and your cart has not been changed.
-        This usually happens when a book sold out while you were checking out.
+        @(TempData["checkoutError"] as string ?? "This usually happens when a book sold out while you were checking out.")
     </p>
     <a class="btn btn-primary" asp-controller="Cart" asp-action="GetUserCart">Review your cart</a>
 </div>

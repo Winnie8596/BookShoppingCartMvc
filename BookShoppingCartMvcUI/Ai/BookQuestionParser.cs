@@ -42,8 +42,8 @@ public static class BookQuestionParser
     public static AssistantBookQuery Parse(string? question)
     {
         var text = question ?? "";
-        double? minPrice = null;
-        double? maxPrice = null;
+        decimal? minPrice = null;
+        decimal? maxPrice = null;
 
         var range = Range.Match(text);
         if (range.Success)
@@ -74,8 +74,8 @@ public static class BookQuestionParser
             if (!below.Success && !above.Success && around.Success)
             {
                 var amount = ParseAmount(around.Groups[1].Value);
-                minPrice = Math.Round(amount * 0.9, 2);
-                maxPrice = Math.Round(amount * 1.1, 2);
+                minPrice = Math.Round(amount * 0.9m, 2);
+                maxPrice = Math.Round(amount * 1.1m, 2);
             }
         }
 
@@ -92,7 +92,7 @@ public static class BookQuestionParser
         return new AssistantBookQuery(keywords, minPrice, maxPrice, inStockOnly);
     }
 
-    private static double ParseAmount(string value) => double.Parse(value, CultureInfo.InvariantCulture);
+    private static decimal ParseAmount(string value) => decimal.Parse(value, CultureInfo.InvariantCulture);
 
     private static string Normalize(string word)
     {

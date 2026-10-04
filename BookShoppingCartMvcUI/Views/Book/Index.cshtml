@@ -57,7 +57,7 @@
     @Model.TotalCount @(Model.TotalCount == 1 ? "book" : "books")@(filtered ? " match" : "")
 </p>
 
-@if (Model.Books.Any())
+@if (Model.Items.Any())
 {
     <div class="table-responsive">
         <table class="table table-striped align-middle" id="admin-books">
@@ -72,7 +72,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var book in Model.Books)
+                @foreach (var book in Model.Items)
                 {
                     <tr>
                         <td>
@@ -86,7 +86,7 @@
                         <td>@book.GenreName</td>
                         <td class="text-end">@Money.Format(book.Price)</td>
                         <td>
-                            <a asp-controller="Stock" asp-action="ManangeStock" asp-route-bookId="@book.Id" class="text-decoration-none"
+                            <a asp-controller="Stock" asp-action="ManageStock" asp-route-bookId="@book.Id" class="text-decoration-none"
                                aria-label="Update stock of @book.BookName (@book.Quantity, @StockLevel.Status(book.Quantity))">
                                 @book.Quantity <span class="badge @StockLevel.BadgeClass(book.Quantity)">@StockLevel.Status(book.Quantity)</span>
                             </a>

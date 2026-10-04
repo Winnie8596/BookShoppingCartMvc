@@ -1,0 +1,5 @@
+# caddy gets a free https cert from let's encrypt for $DOMAIN
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy web:8080
+}

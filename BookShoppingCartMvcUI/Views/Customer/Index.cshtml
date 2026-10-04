@@ -45,7 +45,7 @@
     @Model.TotalCount @(Model.TotalCount == 1 ? "customer" : "customers")@(searched ? " match" : "")
 </p>
 
-@if (Model.Customers.Any())
+@if (Model.Items.Any())
 {
     <div class="table-responsive">
         <table class="table table-striped align-middle" id="customers">
@@ -60,7 +60,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var customer in Model.Customers)
+                @foreach (var customer in Model.Items)
                 {
                     <tr>
                         <td>

@@ -8,7 +8,7 @@ public class AdminCustomerQuery
 {
     public const int DefaultPageSize = 20;
     public const int MaxPageSize = 100;
-    public static readonly string[] Sorts = { "email", "recent", "orders", "spent" };
+    public static readonly IReadOnlyList<string> Sorts = ["email", "recent", "orders", "spent"];
 
     // email, username, phone, or the name they used on an order
     public string? Search { get; set; }
@@ -18,16 +18,12 @@ public class AdminCustomerQuery
 }
 
 // one page of customers + the filters
-public class AdminCustomersPageModel
+public class AdminCustomersPageModel : PagedResult<AdminCustomerRowModel>
 {
-    public List<AdminCustomerRowModel> Customers { get; set; } = new();
+    public AdminCustomersPageModel() : base(AdminCustomerQuery.DefaultPageSize) { }
+
     public string? Search { get; set; }
     public string Sort { get; set; } = "email";
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = AdminCustomerQuery.DefaultPageSize;
-    // total matching the search
-    public int TotalCount { get; set; }
-    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 0;
 }
 
 // just the columns the list needs
@@ -43,7 +39,7 @@ public class AdminCustomerRowModel
     public int OrderCount { get; set; }
     public DateTime? LastOrderDate { get; set; }
     // paid orders that weren't cancelled/returned/refunded, same as the dashboard revenue
-    public double TotalSpent { get; set; }
+    public decimal TotalSpent { get; set; }
 }
 
 // everything on the customer details page
@@ -64,7 +60,7 @@ public class AdminCustomerDetailsModel
     public AdminCustomerDeliveryModel? LatestDelivery { get; set; }
     // all their orders except deleted ones, newest first
     public List<OrderSummaryModel> Orders { get; set; } = new();
-    public double TotalSpent { get; set; }
+    public decimal TotalSpent { get; set; }
 }
 
 public record AdminCustomerDeliveryModel(string? Name, string? MobileNumber, string? Address);

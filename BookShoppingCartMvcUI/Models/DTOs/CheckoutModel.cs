@@ -13,7 +13,7 @@ public class CheckoutModel : IValidatableObject
     [Display(Name = "Email")]
     [Required(ErrorMessage = "Please enter your email address.")]
     [EmailAddress(ErrorMessage = "Please enter a valid email address, like name@example.com.")]
-    [MaxLength(30, ErrorMessage = "Please use an email address of 30 characters or fewer.")]
+    [MaxLength(256, ErrorMessage = "Please use an email address of 256 characters or fewer.")]
     public string? Email { get; set; }
 
     [Display(Name = "Mobile number")]

@@ -11,24 +11,27 @@ public static class OrderWorkflow
     public const string Returned = "Returned";
     public const string Refund = "Refund";
 
-    public static readonly string[] Statuses = { Pending, Shipped, Delivered, Cancelled, Returned, Refund };
+    public static readonly IReadOnlyList<string> Statuses = [Pending, Shipped, Delivered, Cancelled, Returned, Refund];
 
-    private static readonly Dictionary<string, string[]> Next = new()
+    // the books weren't really sold: no revenue, and it doesn't count as bought for reviews
+    public static readonly IReadOnlyList<string> NotSold = [Cancelled, Returned, Refund];
+
+    private static readonly Dictionary<string, IReadOnlyList<string>> Next = new()
     {
         // books leave when it ships, before that it can still be cancelled
-        [Pending] = new[] { Shipped, Cancelled },
+        [Pending] = [Shipped, Cancelled],
         // after shipping it's a return, not a cancel
-        [Shipped] = new[] { Delivered, Returned },
-        [Delivered] = new[] { Returned },
-        [Returned] = new[] { Refund },
+        [Shipped] = [Delivered, Returned],
+        [Delivered] = [Returned],
+        [Returned] = [Refund],
         // cancelled but paid orders still need a refund
-        [Cancelled] = new[] { Refund },
-        [Refund] = Array.Empty<string>()
+        [Cancelled] = [Refund],
+        [Refund] = []
     };
 
     // statuses it can move to from `from`, unknown status = none
     public static IReadOnlyList<string> NextStatuses(string? from) =>
-        from is not null && Next.TryGetValue(from, out var next) ? next : Array.Empty<string>();
+        from is not null && Next.TryGetValue(from, out var next) ? next : [];
 
     public static bool CanMove(string? from, string? to) => to is not null && NextStatuses(from).Contains(to);
 

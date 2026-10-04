@@ -49,15 +49,15 @@ public static class BookContextBuilder
             query.Keywords.Count > 0 ? "title, author or genre matches words from the question" : "no topic words"
         };
 
-        if (query.MinPrice is double min && query.MaxPrice is double max)
+        if (query.MinPrice is decimal min && query.MaxPrice is decimal max)
         {
             parts.Add($"price {Money.Format(min)} to {Money.Format(max)}");
         }
-        else if (query.MaxPrice is double below)
+        else if (query.MaxPrice is decimal below)
         {
             parts.Add($"price up to {Money.Format(below)}");
         }
-        else if (query.MinPrice is double above)
+        else if (query.MinPrice is decimal above)
         {
             parts.Add($"price from {Money.Format(above)}");
         }

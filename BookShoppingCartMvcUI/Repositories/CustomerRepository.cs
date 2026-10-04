@@ -1,3 +1,4 @@
+using BookShoppingCartMvcUI.Shared;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,7 +30,7 @@ public class CustomerRepository : ICustomerRepository
             customers = customers.Where(u => u.Email!.ToLower().Contains(term)
                 || u.UserName!.ToLower().Contains(term)
                 || u.PhoneNumber!.Contains(search)
-                || _db.Orders.Any(o => o.UserId == u.Id && !o.IsDeleted && o.Name!.ToLower().Contains(term)));
+                || _db.Orders.Any(o => o.UserId == u.Id && o.Name!.ToLower().Contains(term)));
         }
 
         var page = new AdminCustomersPageModel
@@ -54,12 +55,12 @@ public class CustomerRepository : ICustomerRepository
             Email = u.Email,
             EmailConfirmed = u.EmailConfirmed,
             LockoutEnd = u.LockoutEnd,
-            LatestOrderName = _db.Orders.Where(o => o.UserId == u.Id && !o.IsDeleted)
+            LatestOrderName = _db.Orders.Where(o => o.UserId == u.Id)
                 .OrderByDescending(o => o.CreateDate).ThenByDescending(o => o.Id).Select(o => o.Name).FirstOrDefault(),
-            OrderCount = _db.Orders.Count(o => o.UserId == u.Id && !o.IsDeleted),
-            LastOrderDate = _db.Orders.Where(o => o.UserId == u.Id && !o.IsDeleted).Max(o => (DateTime?)o.CreateDate),
+            OrderCount = _db.Orders.Count(o => o.UserId == u.Id),
+            LastOrderDate = _db.Orders.Where(o => o.UserId == u.Id).Max(o => (DateTime?)o.CreateDate),
             // Sum of no rows is NULL, hence the cast
-            TotalSpent = revenueLines.Where(od => od.Order.UserId == u.Id).Sum(od => (double?)(od.UnitPrice * od.Quantity)) ?? 0
+            TotalSpent = revenueLines.Where(od => od.Order.UserId == u.Id).Sum(od => (decimal?)(od.UnitPrice * od.Quantity)) ?? 0
         });
         IOrderedQueryable<AdminCustomerRowModel> sorted = sort switch
         {
@@ -68,7 +69,7 @@ public class CustomerRepository : ICustomerRepository
             "spent" => rows.OrderByDescending(r => r.TotalSpent).ThenBy(r => r.Email),
             _ => rows.OrderBy(r => r.Email)
         };
-        page.Customers = await sorted.ThenBy(r => r.Id)
+        page.Items = await sorted.ThenBy(r => r.Id)
             .Skip((int)skip)
             .Take(pageSize)
             .ToListAsync();
@@ -96,13 +97,13 @@ public class CustomerRepository : ICustomerRepository
                 AccessFailedCount = u.AccessFailedCount,
                 WishlistCount = _db.WishlistItems.Count(w => w.UserId == u.Id),
                 ReviewCount = _db.Reviews.Count(r => r.UserId == u.Id),
-                TotalSpent = revenueLines.Where(od => od.Order.UserId == u.Id).Sum(od => (double?)(od.UnitPrice * od.Quantity)) ?? 0
+                TotalSpent = revenueLines.Where(od => od.Order.UserId == u.Id).Sum(od => (decimal?)(od.UnitPrice * od.Quantity)) ?? 0
             })
             .FirstOrDefaultAsync();
         if (customer is null)
             return null;
 
-        var orders = _db.Orders.Where(o => o.UserId == id && !o.IsDeleted)
+        var orders = _db.Orders.Where(o => o.UserId == id)
             .OrderByDescending(o => o.CreateDate).ThenByDescending(o => o.Id);
         customer.Orders = await orders
             .Select(o => new OrderSummaryModel(o.Id, o.CreateDate, o.OrderStatus.StatusName, o.PaymentMethod, o.IsPaid,
@@ -129,16 +130,6 @@ public class CustomerRepository : ICustomerRepository
 
     // order lines that count as spent: paid, not deleted, not cancelled/returned/refunded
     private IQueryable<OrderDetail> RevenueLines() =>
-        _db.OrderDetails.Where(od => !od.Order.IsDeleted && od.Order.IsPaid
-            && !DashboardRepository.NonRevenueStatuses.Contains(od.Order.OrderStatus.StatusName));
-}
-
-public interface ICustomerRepository
-{
-    // one page of customers
-    Task<AdminCustomersPageModel> GetCustomers(AdminCustomerQuery query);
-    // customer + order history, null if not found or not a customer
-    Task<AdminCustomerDetailsModel?> GetCustomer(string? id);
-    // is this a customer account (for linking from orders)
-    Task<bool> IsCustomer(string? id);
+        _db.OrderDetails.Where(od => od.Order.IsPaid
+            && !OrderWorkflow.NotSold.Contains(od.Order.OrderStatus.StatusName));
 }

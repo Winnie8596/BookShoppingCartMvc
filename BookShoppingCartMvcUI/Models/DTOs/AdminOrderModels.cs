@@ -5,7 +5,7 @@ public class AdminOrderQuery
 {
     public const int DefaultPageSize = 20;
     public const int MaxPageSize = 100;
-    public static readonly string[] PaymentFilters = { "all", "paid", "unpaid" };
+    public static readonly IReadOnlyList<string> PaymentFilters = ["all", "paid", "unpaid"];
 
     // order number (# optional), or customer name/email/mobile
     public string? Search { get; set; }
@@ -17,18 +17,14 @@ public class AdminOrderQuery
 }
 
 // one page of orders (newest first) + status counts + filters
-public class AdminOrdersPageModel
+public class AdminOrdersPageModel : PagedResult<AdminOrderRowModel>
 {
-    public List<AdminOrderRowModel> Orders { get; set; } = new();
+    public AdminOrdersPageModel() : base(AdminOrderQuery.DefaultPageSize) { }
+
     public string? Search { get; set; }
     // null = all statuses
     public string? Status { get; set; }
     public string Payment { get; set; } = "all";
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = AdminOrderQuery.DefaultPageSize;
-    // matching all the filters
-    public int TotalCount { get; set; }
-    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 0;
     // per status, only counts the search + payment filter so the tabs make sense
     public Dictionary<string, int> StatusCounts { get; set; } = new();
     public int AllStatusesCount => StatusCounts.Values.Sum();
@@ -45,7 +41,7 @@ public class AdminOrderRowModel
     public bool IsPaid { get; set; }
     public string? StatusName { get; set; }
     public int ItemCount { get; set; }
-    public double Total { get; set; }
+    public decimal Total { get; set; }
 }
 
 // everything on the admin order page
@@ -66,15 +62,15 @@ public class AdminOrderDetailsModel
     public string? MobileNumber { get; set; }
     public string? Address { get; set; }
     public List<AdminOrderLineModel> Lines { get; set; } = new();
-    public double Total => Lines.Sum(l => l.Subtotal);
+    public decimal Total => Lines.Sum(l => l.Subtotal);
     // statuses it can move to next, empty once it's finished
     public List<OrderStatus> NextStatuses { get; set; } = new();
 }
 
 // order line, unit price from when it was ordered
-public record AdminOrderLineModel(int BookId, string? BookName, string? GenreName, int Quantity, double UnitPrice)
+public record AdminOrderLineModel(int BookId, string? BookName, string? GenreName, int Quantity, decimal UnitPrice)
 {
-    public double Subtotal => UnitPrice * Quantity;
+    public decimal Subtotal => UnitPrice * Quantity;
 }
 
 public enum OrderStatusChangeStatus

@@ -11,8 +11,9 @@ public interface IUserOrderRepository
     Task<OrderStatusChangeResult> ChangeOrderStatus(int orderId, int newStatusId, int? expectedStatusId = null);
     // toggle paid, false if the order doesn't exist
     Task<bool> TogglePaymentStatus(int orderId);
-    // user's orders, newest first
-    Task<List<OrderSummaryModel>> GetMyOrders();
+    // user's orders, newest first. limit = only the latest few
+    Task<List<OrderSummaryModel>> GetMyOrders(int? limit = null);
+    Task<int> CountMyOrders();
     // one of the user's orders, null if not found or not theirs
     Task<OrderDetailsModel?> GetMyOrder(int orderId);
 

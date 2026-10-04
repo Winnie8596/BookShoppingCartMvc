@@ -38,7 +38,7 @@ namespace BookShoppingCartMvcUI.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-
+            migrationBuilder.Sql("DROP PROCEDURE IF EXISTS [dbo].[Usp_GetTopNSellingBooksByDate]");
         }
     }
 }
